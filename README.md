@@ -1,5 +1,10 @@
 # Competitive-Programming-eXecutor
 
+## Install
+```
+curl -fsSL https://github.com/solle458/Competitive-Programming-eXecutor/main/install.sh | sh
+```
+
 ## Usage
 ```
 cpx init
