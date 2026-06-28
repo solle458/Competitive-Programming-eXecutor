@@ -2,7 +2,7 @@
 
 ## Install
 ```
-curl -fsSL https://github.com/solle458/Competitive-Programming-eXecutor/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/solle458/Competitive-Programming-eXecutor/main/install.sh | sh
 ```
 
 ## Usage
