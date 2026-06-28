@@ -17,6 +17,7 @@ before:
 
 builds:
   - main: ./...
+    binary: cpx
     env:
       - CGO_ENABLED=0
     goos:
