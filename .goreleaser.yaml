@@ -16,7 +16,7 @@ before:
     - go generate ./...
 
 builds:
-  - main: ./...
+  - main: .
     binary: cpx
     env:
       - CGO_ENABLED=0
