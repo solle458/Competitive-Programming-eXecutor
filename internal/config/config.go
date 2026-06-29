@@ -1,0 +1,77 @@
+package config
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+
+	"gopkg.in/yaml.v3"
+)
+
+type File struct {
+	RootDir     string   `yaml:"root_dir"`
+	LibraryDirs []string `yaml:"library_dirs"`
+	DefaultLang string   `yaml:"default_lang"`
+}
+
+type Config struct {
+	File File
+}
+
+func NewConfig() *Config {
+	return &Config{
+		File: File{
+			RootDir:     "",
+			LibraryDirs: []string{},
+			DefaultLang: "cpp",
+		},
+	}
+}
+
+func Load(root string) (*Config, error) {
+	cfgPath := filepath.Join(root, ".config.yaml")
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		return nil, errors.New("config file not found")
+	}
+	cfgFile, err := os.Open(cfgPath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer cfgFile.Close()
+	decoder := yaml.NewDecoder(cfgFile)
+	var cfg Config
+	if err := decoder.Decode(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func Update(cfg *Config) error {
+	cfgPath := filepath.Join(cfg.File.RootDir, ".config.yaml")
+	cfgFile, err := os.Create(cfgPath)
+	if err != nil {
+		return err
+	}
+	defer cfgFile.Close()
+	encoder := yaml.NewEncoder(cfgFile)
+	if err := encoder.Encode(cfg); err != nil {
+		return err
+	}
+	return encoder.Close()
+}
+
+func AddLibraryDir(cfg *Config, libraryDirs []string) error {
+	newLibraryDirs := append(cfg.File.LibraryDirs, libraryDirs...)
+	for _, dir := range newLibraryDirs {
+		dir, err := filepath.Abs(dir)
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			return errors.New("library directory not found")
+		}
+	}
+	cfg.File.LibraryDirs = newLibraryDirs
+	return nil
+}

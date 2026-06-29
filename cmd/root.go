@@ -7,23 +7,29 @@ import (
 	"fmt"
 	"os"
 
+	"Competitive-Programming-eXecutor/internal/app"
+
 	"github.com/spf13/cobra"
 )
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "cpx",
-	Short: "Competitive Programming eXecutor",
-	Long:  `Competitive Programming eXecutor is a tool for competitive programming.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Hello, cpx!")
-	},
+func rootCmd(app *app.App) *cobra.Command {
+	root := &cobra.Command{
+		Use:   "cpx",
+		Short: "Competitive Programming eXecutor",
+		Long:  `Competitive Programming eXecutor is a tool for competitive programming.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Hello, cpx!")
+		},
+	}
+	root.AddCommand(initCmd(app))
+	return root
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	err := rootCmd.Execute()
+func Execute(app *app.App) {
+	err := rootCmd(app).Execute()
 	if err != nil {
 		os.Exit(1)
 	}

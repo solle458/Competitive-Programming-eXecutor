@@ -4,50 +4,29 @@ Copyright © 2026 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
+	"Competitive-Programming-eXecutor/internal/app"
+	"Competitive-Programming-eXecutor/internal/config"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
 // initCmd represents the init command
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		dir, err := cmd.Flags().GetString("directory")
-		if err != nil {
-			fmt.Println("Error getting directory: ", err)
-			return
-		}
-		if dir == "" {
-			dir, err = os.Getwd()
+func initCmd(app *app.App) *cobra.Command {
+	return &cobra.Command{
+		Use:   "init",
+		Short: "Initialize the competitive programming",
+		Long:  `Initialize the competitive programming`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root, err := os.Getwd()
 			if err != nil {
-				fmt.Println("Error getting working directory: ", err)
-				return
+				return err
 			}
-		}
-		fmt.Println("Directory: ", dir)
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(initCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// initCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// initCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	initCmd.Flags().String("directory", "", "Register the competitive programming directory")
+			app.Config.File.RootDir = root
+			app.Config.File.LibraryDirs = []string{filepath.Join(root, "library")}
+			app.Config.File.DefaultLang = "cpp"
+			return config.Update(app.Config)
+		},
+	}
 }

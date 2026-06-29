@@ -1,0 +1,5 @@
+file:
+    root_dir: path/to/root/dir
+    library_dirs:
+        - path/to/library
+    default_lang: cpp
