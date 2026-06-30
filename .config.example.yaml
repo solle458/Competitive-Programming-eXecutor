@@ -2,4 +2,4 @@ file:
     root_dir: path/to/root/dir
     library_dirs:
         - path/to/library
-    default_lang: cpp
+    default_lang: cpp # required extention style: e.g. cpp, py, java, etc.

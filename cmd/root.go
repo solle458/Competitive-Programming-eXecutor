@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"Competitive-Programming-eXecutor/internal/app"
+	"Competitive-Programming-eXecutor/internal/config"
 
 	"github.com/spf13/cobra"
 )
@@ -21,8 +22,20 @@ func rootCmd(app *app.App) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Hello, cpx!")
 		},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Name() == "init" {
+				return nil
+			}
+			cfg, err := config.FindAndLoad() // cwd から親へ .config.yaml を探す
+			if err != nil {
+				return fmt.Errorf("not initialized: run `cpx init` first")
+			}
+			app.Config = cfg
+			return nil
+		},
 	}
 	root.AddCommand(initCmd(app))
+	root.AddCommand(mergeCmd(app))
 	return root
 }
 

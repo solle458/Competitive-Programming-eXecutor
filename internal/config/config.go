@@ -8,6 +8,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var ErrConfigNotFound = errors.New("config file not found")
+
 type File struct {
 	RootDir     string   `yaml:"root_dir"`
 	LibraryDirs []string `yaml:"library_dirs"`
@@ -31,7 +33,7 @@ func NewConfig() *Config {
 func Load(root string) (*Config, error) {
 	cfgPath := filepath.Join(root, ".config.yaml")
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
-		return nil, errors.New("config file not found")
+		return nil, ErrConfigNotFound
 	}
 	cfgFile, err := os.Open(cfgPath)
 	if err != nil {
@@ -74,4 +76,25 @@ func AddLibraryDir(cfg *Config, libraryDirs []string) error {
 	}
 	cfg.File.LibraryDirs = newLibraryDirs
 	return nil
+}
+
+func FindAndLoad() (*Config, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		cfg, err := Load(wd)
+		if err != nil && !errors.Is(err, ErrConfigNotFound) {
+			return nil, err
+		}
+		if cfg != nil {
+			return cfg, nil
+		}
+		parent := filepath.Dir(wd)
+		if parent == wd {
+			return nil, ErrConfigNotFound
+		}
+		wd = parent
+	}
 }

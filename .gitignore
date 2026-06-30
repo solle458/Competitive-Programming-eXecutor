@@ -33,3 +33,4 @@ go.work.sum
 # Added by goreleaser init:
 dist/
 .config.yaml
+test/
