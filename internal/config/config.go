@@ -31,7 +31,7 @@ func NewConfig() *Config {
 }
 
 func Load(root string) (*Config, error) {
-	cfgPath := filepath.Join(root, ".config.yaml")
+	cfgPath := filepath.Join(root, ".cpx", "config.yaml")
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		return nil, ErrConfigNotFound
 	}
@@ -50,7 +50,8 @@ func Load(root string) (*Config, error) {
 }
 
 func Update(cfg *Config) error {
-	cfgPath := filepath.Join(cfg.File.RootDir, ".config.yaml")
+	cfgPath := filepath.Join(cfg.File.RootDir, ".cpx", "config.yaml")
+	os.MkdirAll(filepath.Dir(cfgPath), 0o755)
 	cfgFile, err := os.Create(cfgPath)
 	if err != nil {
 		return err

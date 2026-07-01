@@ -32,5 +32,6 @@ go.work.sum
 # .vscode/
 # Added by goreleaser init:
 dist/
-.config.yaml
+.cpx/*
 test/
+.vscode/
