@@ -6,6 +6,7 @@ package cmd
 import (
 	"Competitive-Programming-eXecutor/internal/app"
 	"Competitive-Programming-eXecutor/internal/config"
+	"Competitive-Programming-eXecutor/internal/template"
 	"os"
 	"path/filepath"
 
@@ -26,7 +27,17 @@ func initCmd(app *app.App) *cobra.Command {
 			app.Config.File.RootDir = root
 			app.Config.File.LibraryDirs = []string{filepath.Join(root, "library")}
 			app.Config.File.DefaultLang = "cpp"
-			return config.Update(app.Config)
+			app.Config.File.AtCoderSession = ""
+			if err := config.Update(app.Config); err != nil {
+				return err
+			}
+			if err := template.CreateTemplate(app.Config.File.RootDir); err != nil {
+				return err
+			}
+			if err := template.CreateLibraryTemplate(app.Config.File.RootDir); err != nil {
+				return err
+			}
+			return nil
 		},
 	}
 }

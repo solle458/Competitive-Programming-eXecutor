@@ -11,9 +11,10 @@ import (
 var ErrConfigNotFound = errors.New("config file not found")
 
 type File struct {
-	RootDir     string   `yaml:"root_dir"`
-	LibraryDirs []string `yaml:"library_dirs"`
-	DefaultLang string   `yaml:"default_lang"`
+	RootDir        string   `yaml:"root_dir"`
+	LibraryDirs    []string `yaml:"library_dirs"`
+	DefaultLang    string   `yaml:"default_lang"`
+	AtCoderSession string   `yaml:"atcoder_session,omitempty"`
 }
 
 type Config struct {
@@ -23,9 +24,10 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		File: File{
-			RootDir:     "",
-			LibraryDirs: []string{},
-			DefaultLang: "cpp",
+			RootDir:        "",
+			LibraryDirs:    []string{},
+			DefaultLang:    "cpp",
+			AtCoderSession: "",
 		},
 	}
 }

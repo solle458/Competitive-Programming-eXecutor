@@ -39,7 +39,7 @@ func setupCmd(app *app.App) *cobra.Command {
 				Lang:       lang,
 				WorkingDir: wd,
 				Config:     app.Config,
-			})
+			}, app)
 			if err != nil {
 				return err
 			}

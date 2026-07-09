@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"Competitive-Programming-eXecutor/internal/app"
+	"Competitive-Programming-eXecutor/internal/config"
 	"Competitive-Programming-eXecutor/internal/setup"
 	"Competitive-Programming-eXecutor/internal/template"
 
@@ -47,12 +49,22 @@ const (
 )
 
 var (
-	taskLinkPattern   = regexp.MustCompile(`/contests/([a-z0-9_]+)/tasks/([a-z0-9_]+)`)
+	taskLinkPattern   = regexp.MustCompile(`/contests/([a-z0-9_-]+)/tasks/([a-z0-9_-]+)`)
 	sampleInputLabel  = regexp.MustCompile(`^(?:入力例|Sample Input) (\d+)$`)
 	sampleOutputLabel = regexp.MustCompile(`^(?:出力例|Sample Output) (\d+)$`)
 )
 
 type AtCoder struct{}
+
+func getAtCoderSession(cfg *config.Config) string {
+	if v := strings.TrimSpace(os.Getenv("ATCODER_SESSION")); v != "" {
+		return v
+	}
+	if cfg != nil {
+		return strings.TrimSpace(cfg.File.AtCoderSession)
+	}
+	return ""
+}
 
 func (AtCoder) Supports(contestID string) bool {
 	exists, err := IsContestExists(contestID)
@@ -62,12 +74,14 @@ func (AtCoder) Supports(contestID string) bool {
 	return exists
 }
 
-func (AtCoder) Setup(req setup.Request) error {
+func (AtCoder) Setup(req setup.Request, app *app.App) error {
 	contestID := strings.ToLower(req.ContestID)
 	lang := req.Lang
 	workingDir := req.WorkingDir
 
-	problems, err := GetProblems(contestID)
+	session := getAtCoderSession(app.Config)
+
+	problems, err := GetProblems(contestID, session)
 	if err != nil {
 		return err
 	}
@@ -85,13 +99,17 @@ func (AtCoder) Setup(req setup.Request) error {
 		}
 		mainPath := filepath.Join(problemDir, "main."+lang)
 		if _, err := os.Stat(mainPath); os.IsNotExist(err) {
-			if err := os.WriteFile(mainPath, []byte(template.GetSourceCode(lang)), 0o644); err != nil {
+			sourceCode, err := template.GetSourceCode(lang, app.Config.File.RootDir)
+			if err != nil {
+				return fmt.Errorf("get template %q: %w", mainPath, err)
+			}
+			if err := os.WriteFile(mainPath, []byte(sourceCode), 0o644); err != nil {
 				return fmt.Errorf("write template %q: %w", mainPath, err)
 			}
 		}
 		testDir := filepath.Join(problemDir, "test")
 		if _, err := os.Stat(testDir); os.IsNotExist(err) {
-			if err := downloadSamples(problemDir, contestID, problem.ProblemID); err != nil {
+			if err := downloadSamples(problemDir, contestID, problem.ProblemID, session); err != nil {
 				return fmt.Errorf("download samples for %q: %w", problem.ProblemID, err)
 			}
 		}
@@ -99,7 +117,7 @@ func (AtCoder) Setup(req setup.Request) error {
 	return nil
 }
 
-func newAtCoderCollector() *colly.Collector {
+func newAtCoderCollector(session string) *colly.Collector {
 	col := colly.NewCollector(
 		colly.UserAgent(atcoderUserAgent),
 	)
@@ -109,6 +127,11 @@ func newAtCoderCollector() *colly.Collector {
 		Parallelism: 1,
 		Delay:       requestInterval,
 	})
+	if session != "" {
+		col.OnRequest(func(r *colly.Request) {
+			r.Headers.Set("Cookie", "REVEL_SESSION="+session)
+		})
+	}
 	return col
 }
 
@@ -117,9 +140,9 @@ type sampleCase struct {
 	output string
 }
 
-func downloadSamples(problemDir, contestID, problemID string) error {
+func downloadSamples(problemDir, contestID, problemID, session string) error {
 	url := fmt.Sprintf("https://atcoder.jp/contests/%s/tasks/%s", contestID, problemID)
-	col := newAtCoderCollector()
+	col := newAtCoderCollector(session)
 
 	samples := make(map[int]*sampleCase)
 	var visitErr error
@@ -195,13 +218,13 @@ func downloadSamples(problemDir, contestID, problemID string) error {
 	return nil
 }
 
-func GetProblems(contestID string) ([]Problem, error) {
+func GetProblems(contestID, session string) ([]Problem, error) {
 	contestID = strings.ToLower(contestID)
 	problems, err := getProblemsFromKenkoooo(contestID)
 	if err == nil && len(problems) > 0 {
 		return problems, nil
 	}
-	return getProblemsFromTasksPage(contestID)
+	return getProblemsFromTasksPage(contestID, session)
 }
 
 func getProblemsFromKenkoooo(contestID string) ([]Problem, error) {
@@ -238,14 +261,17 @@ func getProblemsFromKenkoooo(contestID string) ([]Problem, error) {
 	return result, nil
 }
 
-func getProblemsFromTasksPage(contestID string) ([]Problem, error) {
+func getProblemsFromTasksPage(contestID, session string) ([]Problem, error) {
 	url := fmt.Sprintf("https://atcoder.jp/contests/%s/tasks", contestID)
-	resp, err := httpGet(url)
+	resp, err := httpGet(url, session)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound && session == "" {
+			return nil, errors.New("tasks page: 404 Not Found (AtCoder login required for ongoing contests; set atcoder_session in .cpx/config.yaml or ATCODER_SESSION env var)")
+		}
 		return nil, fmt.Errorf("tasks page: %s", resp.Status)
 	}
 
@@ -287,7 +313,7 @@ func problemIndexFromID(problemID string) string {
 
 func IsContestExists(contestID string) (bool, error) {
 	url := fmt.Sprintf("https://atcoder.jp/contests/%s", strings.ToLower(contestID))
-	resp, err := httpGet(url)
+	resp, err := httpGet(url, "")
 	if err != nil {
 		return false, err
 	}
@@ -295,11 +321,14 @@ func IsContestExists(contestID string) (bool, error) {
 	return resp.StatusCode == http.StatusOK, nil
 }
 
-func httpGet(url string) (*http.Response, error) {
+func httpGet(url, session string) (*http.Response, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", atcoderUserAgent)
+	if session != "" {
+		req.Header.Set("Cookie", "REVEL_SESSION="+session)
+	}
 	return http.DefaultClient.Do(req)
 }
