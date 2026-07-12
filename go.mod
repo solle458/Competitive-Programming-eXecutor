@@ -1,11 +1,12 @@
 module Competitive-Programming-eXecutor
 
-go 1.24.5
+go 1.25.0
 
 require (
 	github.com/gammazero/deque v1.2.1
 	github.com/gocolly/colly/v2 v2.1.0
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/sync v0.11.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

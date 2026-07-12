@@ -20,6 +20,7 @@ import (
 	"Competitive-Programming-eXecutor/internal/template"
 
 	"github.com/gocolly/colly/v2"
+	"golang.org/x/sync/errgroup"
 )
 
 type Problem struct {
@@ -45,13 +46,17 @@ type Contest struct {
 const (
 	kenkooooContestProblemURL = "https://kenkoooo.com/atcoder/resources/contest-problem.json"
 	atcoderUserAgent          = "Mozilla/5.0 (compatible; cpx/1.0; +https://github.com/solle458/Competitive-Programming-eXecutor)"
-	requestInterval           = 1100 * time.Millisecond
+	requestInterval           = 500 * time.Millisecond
 )
 
 var (
 	taskLinkPattern   = regexp.MustCompile(`/contests/([a-z0-9_-]+)/tasks/([a-z0-9_-]+)`)
 	sampleInputLabel  = regexp.MustCompile(`^(?:入力例|Sample Input) (\d+)$`)
 	sampleOutputLabel = regexp.MustCompile(`^(?:出力例|Sample Output) (\d+)$`)
+)
+
+var (
+	noSampleCasesError = errors.New("no sample cases found")
 )
 
 type AtCoder struct{}
@@ -89,29 +94,50 @@ func (AtCoder) Setup(req setup.Request, app *app.App) error {
 		return fmt.Errorf("contest %q has no problems", contestID)
 	}
 
-	for i, problem := range problems {
-		if i > 0 {
-			time.Sleep(requestInterval)
-		}
-		problemDir := filepath.Join(workingDir, contestID, strings.ToLower(problem.ProblemIndex))
-		if err := os.MkdirAll(problemDir, 0o755); err != nil {
-			return fmt.Errorf("create problem directory %q: %w", problemDir, err)
-		}
-		mainPath := filepath.Join(problemDir, "main."+lang)
-		if _, err := os.Stat(mainPath); os.IsNotExist(err) {
-			sourceCode, err := template.GetSourceCode(lang, app.Config.File.RootDir)
-			if err != nil {
-				return fmt.Errorf("get template %q: %w", mainPath, err)
+	var g errgroup.Group
+	g.SetLimit(3)
+
+	for _, problem := range problems {
+		problem := problem
+		g.Go(func() error {
+			if err := setupProblem(problem, contestID, lang, workingDir, session, app.Config.File.RootDir); err != nil {
+				if errors.Is(err, noSampleCasesError) {
+					fmt.Printf("no sample cases found for %q, skipping\n", problem.ProblemID)
+					return nil
+				}
+				fmt.Printf("setup failed for %q: %v\n", problem.ProblemID, err)
+				return err
 			}
-			if err := os.WriteFile(mainPath, []byte(sourceCode), 0o644); err != nil {
-				return fmt.Errorf("write template %q: %w", mainPath, err)
-			}
+			return nil
+		})
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("setup completed with errors: %w", err)
+	}
+	return nil
+}
+
+func setupProblem(problem Problem, contestID, lang, workingDir, session, rootDir string) error {
+	problemDir := filepath.Join(workingDir, contestID, strings.ToLower(problem.ProblemIndex))
+	if err := os.MkdirAll(problemDir, 0o755); err != nil {
+		return fmt.Errorf("create problem directory %q: %w", problemDir, err)
+	}
+	mainPath := filepath.Join(problemDir, "main."+lang)
+	if _, err := os.Stat(mainPath); os.IsNotExist(err) {
+		sourceCode, err := template.GetSourceCode(lang, rootDir)
+		if err != nil {
+			return fmt.Errorf("get template %q: %w", mainPath, err)
 		}
-		testDir := filepath.Join(problemDir, "test")
-		if _, err := os.Stat(testDir); os.IsNotExist(err) {
-			if err := downloadSamples(problemDir, contestID, problem.ProblemID, session); err != nil {
-				return fmt.Errorf("download samples for %q: %w", problem.ProblemID, err)
-			}
+		if err := os.WriteFile(mainPath, []byte(sourceCode), 0o644); err != nil {
+			return fmt.Errorf("write template %q: %w", mainPath, err)
+		}
+	}
+	testDir := filepath.Join(problemDir, "test")
+	if _, err := os.Stat(testDir); os.IsNotExist(err) {
+		if err := downloadSamples(problemDir, contestID, problem.ProblemID, session); err != nil {
+			return fmt.Errorf("download samples for %q: %w", problem.ProblemID, err)
 		}
 	}
 	return nil
@@ -187,7 +213,7 @@ func downloadSamples(problemDir, contestID, problemID, session string) error {
 		return visitErr
 	}
 	if len(samples) == 0 {
-		return errors.New("no sample cases found")
+		return noSampleCasesError
 	}
 
 	indices := make([]int, 0, len(samples))
