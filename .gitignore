@@ -34,4 +34,6 @@ go.work.sum
 dist/
 .cpx/*
 test/
+!internal/test/
+!internal/test/**
 .vscode/
