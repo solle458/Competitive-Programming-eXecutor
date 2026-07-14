@@ -61,7 +61,7 @@ var (
 
 type AtCoder struct{}
 
-func getAtCoderSession(cfg *config.Config) string {
+func Session(cfg *config.Config) string {
 	if v := strings.TrimSpace(os.Getenv("ATCODER_SESSION")); v != "" {
 		return v
 	}
@@ -84,7 +84,7 @@ func (AtCoder) Setup(req setup.Request, app *app.App) error {
 	lang := req.Lang
 	workingDir := req.WorkingDir
 
-	session := getAtCoderSession(app.Config)
+	session := Session(app.Config)
 
 	problems, err := GetProblems(contestID, session)
 	if err != nil {

@@ -38,6 +38,7 @@ func rootCmd(app *app.App) *cobra.Command {
 	root.AddCommand(mergeCmd(app))
 	root.AddCommand(setupCmd(app))
 	root.AddCommand(testCmd(app))
+	root.AddCommand(submitCmd(app))
 	return root
 }
 
