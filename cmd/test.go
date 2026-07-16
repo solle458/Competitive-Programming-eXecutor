@@ -46,7 +46,7 @@ func testCmd(app *app.App) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&lang, "lang", "l", "cpp", "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds")
 	return cmd
 }
