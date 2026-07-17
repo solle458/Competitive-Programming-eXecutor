@@ -17,15 +17,19 @@ func submitCmd(app *app.App) *cobra.Command {
 		lang      string
 		timeLimit int
 		skipTest  bool
+		copy      bool
 	)
 	var (
 		problemIDRequired = errors.New("problem id is required")
 	)
 
 	cmd := &cobra.Command{
-		Use:   "submit",
-		Short: "Submit the competitive programming solution",
-		Long:  `Run tests, merge libraries, and submit to AtCoder via oj (ongoing contests only).`,
+		Use:   "submit <problem>",
+		Short: "Test, merge, and submit a solution",
+		Long: `Run sample tests, merge libraries into a submission file, then submit to AtCoder via oj.
+
+Use --copy to copy the merged source to the clipboard instead of submitting
+(useful for practice on past problems). oj submit works for ongoing contests only.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return problemIDRequired
@@ -35,12 +39,14 @@ func submitCmd(app *app.App) *cobra.Command {
 				Lang:        lang,
 				TimeLimit:   timeLimit,
 				SkipTest:    skipTest,
+				Copy:        copy,
 			})
 		},
 	}
 
 	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
-	cmd.Flags().BoolVar(&skipTest, "skip-test", false, "skip sample tests and submit directly")
+	cmd.Flags().BoolVar(&skipTest, "skip-test", false, "skip sample tests before submit or copy")
+	cmd.Flags().BoolVarP(&copy, "copy", "c", false, "copy merged source to clipboard instead of submitting")
 	return cmd
 }

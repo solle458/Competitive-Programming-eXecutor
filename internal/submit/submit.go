@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/atotto/clipboard"
+
 	"Competitive-Programming-eXecutor/internal/config"
 	"Competitive-Programming-eXecutor/internal/merge"
 	setupatcoder "Competitive-Programming-eXecutor/internal/setup/atcoder"
@@ -16,6 +18,7 @@ type Request struct {
 	Lang        string
 	TimeLimit   int
 	SkipTest    bool
+	Copy        bool
 }
 
 func Run(cfg *config.Config, req Request) error {
@@ -49,11 +52,17 @@ func Run(cfg *config.Config, req Request) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("[INFO] wrote %s\n", submissionPath)
+
+	if req.Copy {
+		return copySourceCode(submissionPath)
+	}
 
 	url, err := taskURL(req.ProblemPath)
 	if err != nil {
 		return err
 	}
+	fmt.Printf("[INFO] submitting to %s\n", url)
 
 	session := setupatcoder.Session(cfg)
 	return submitWithOJ(url, submissionPath, session)
@@ -94,4 +103,16 @@ func generateSubmission(problemPath, lang string, cfg *config.Config) (string, e
 		return "", fmt.Errorf("write submission file %q: %w", submissionPath, err)
 	}
 	return submissionPath, nil
+}
+
+func copySourceCode(submissionPath string) error {
+	content, err := os.ReadFile(submissionPath)
+	if err != nil {
+		return fmt.Errorf("read submission file %q: %w", submissionPath, err)
+	}
+	if err := clipboard.WriteAll(string(content)); err != nil {
+		return fmt.Errorf("write to clipboard: %w", err)
+	}
+	fmt.Printf("[INFO] copied %s to clipboard\n", submissionPath)
+	return nil
 }

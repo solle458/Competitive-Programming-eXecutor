@@ -18,9 +18,10 @@ func rootCmd(app *app.App) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "cpx",
 		Short: "Competitive Programming eXecutor",
-		Long:  `Competitive Programming eXecutor is a tool for competitive programming.`,
+		Long: `cpx helps you set up AtCoder contests, run sample tests,
+merge libraries, and submit (or copy) solutions.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("Hello, cpx!")
+			_ = cmd.Help()
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cmd.Name() == "init" {

@@ -22,9 +22,9 @@ func testCmd(app *app.App) *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "test",
-		Short: "Test the competitive programming",
-		Long:  `Test the competitive programming`,
+		Use:   "test <problem>",
+		Short: "Run sample tests for a problem",
+		Long:  `Compile the solution and compare its output against sample cases under the problem directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return problemIDRequired
@@ -47,6 +47,6 @@ func testCmd(app *app.App) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
-	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds")
+	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
 	return cmd
 }

@@ -7,6 +7,7 @@ import (
 	"Competitive-Programming-eXecutor/internal/app"
 	"Competitive-Programming-eXecutor/internal/config"
 	"Competitive-Programming-eXecutor/internal/template"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -17,8 +18,8 @@ import (
 func initCmd(app *app.App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
-		Short: "Initialize the competitive programming",
-		Long:  `Initialize the competitive programming`,
+		Short: "Initialize a cpx workspace",
+		Long:  `Create .cpx/config.yaml, default templates, and a library directory in the current directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root, err := os.Getwd()
 			if err != nil {
@@ -37,6 +38,7 @@ func initCmd(app *app.App) *cobra.Command {
 			if err := template.CreateLibraryTemplate(app.Config.File.RootDir); err != nil {
 				return err
 			}
+			fmt.Printf("[INFO] initialized cpx workspace in %s\n", root)
 			return nil
 		},
 	}

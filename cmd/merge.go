@@ -20,9 +20,9 @@ func mergeCmd(app *app.App) *cobra.Command {
 	var lang string
 
 	cmd := &cobra.Command{
-		Use:   "merge",
-		Short: "Merge the competitive programming",
-		Long:  `Merge the competitive programming`,
+		Use:   "merge <problem>",
+		Short: "Merge libraries into a submission file",
+		Long:  `Expand library includes in main.<lang> and write the result to submission.<lang>.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			extension := lang
 			if extension == "" {
@@ -49,6 +49,7 @@ func mergeCmd(app *app.App) *cobra.Command {
 			if err := os.WriteFile(outputPath, []byte(submissionCode), 0o644); err != nil {
 				return fmt.Errorf("write submission file %q: %w", outputPath, err)
 			}
+			fmt.Printf("[INFO] wrote %s\n", outputPath)
 			return nil
 		},
 	}

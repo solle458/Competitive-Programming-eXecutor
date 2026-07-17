@@ -102,12 +102,13 @@ func (AtCoder) Setup(req setup.Request, app *app.App) error {
 		g.Go(func() error {
 			if err := setupProblem(problem, contestID, lang, workingDir, session, app.Config.File.RootDir); err != nil {
 				if errors.Is(err, noSampleCasesError) {
-					fmt.Printf("no sample cases found for %q, skipping\n", problem.ProblemID)
+					fmt.Printf("[INFO] no sample cases found for %q, skipping\n", problem.ProblemID)
 					return nil
 				}
-				fmt.Printf("setup failed for %q: %v\n", problem.ProblemID, err)
+				fmt.Printf("[ERROR] setup failed for %q: %v\n", problem.ProblemID, err)
 				return err
 			}
+			fmt.Printf("[INFO] setup %s/%s\n", contestID, strings.ToLower(problem.ProblemIndex))
 			return nil
 		})
 		time.Sleep(500 * time.Millisecond)

@@ -8,6 +8,7 @@ import (
 	"Competitive-Programming-eXecutor/internal/setup"
 	"Competitive-Programming-eXecutor/internal/setup/atcoder"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -17,9 +18,9 @@ import (
 func setupCmd(app *app.App) *cobra.Command {
 	var lang string
 	cmd := &cobra.Command{
-		Use:   "setup",
-		Short: "Setup the competitive programming",
-		Long:  `Setup the competitive programming`,
+		Use:   "setup <contest>",
+		Short: "Download contest problems and sample cases",
+		Long:  `Create problem directories for an AtCoder contest, with templates and sample input/output files.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("contest id is required")
@@ -43,6 +44,7 @@ func setupCmd(app *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			fmt.Printf("[INFO] setup complete for contest %s\n", contestID)
 			return nil
 		},
 	}
