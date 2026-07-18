@@ -14,7 +14,7 @@ type File struct {
 	RootDir        string   `yaml:"root_dir"`
 	LibraryDirs    []string `yaml:"library_dirs"`
 	DefaultLang    string   `yaml:"default_lang"`
-	AtCoderSession string   `yaml:"atcoder_session,omitempty"`
+	AtCoderSession string   `yaml:"atcoder_session"`
 }
 
 type Config struct {

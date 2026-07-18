@@ -3,3 +3,4 @@ file:
     library_dirs:
         - path/to/library
     default_lang: cpp # required extention style: e.g. cpp, py, java, etc.
+    atcoder_session: "" # REVEL_SESSION cookie; or set ATCODER_SESSION env

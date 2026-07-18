@@ -26,10 +26,11 @@ func submitCmd(app *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "submit <problem>",
 		Short: "Test, merge, and submit a solution",
-		Long: `Run sample tests, merge libraries into a submission file, then submit to AtCoder via oj.
+		Long: `Run sample tests, merge libraries into a submission file, then submit to AtCoder via oj
+(with a MiB memory-limit patch so modern AtCoder pages parse correctly).
 
 Use --copy to copy the merged source to the clipboard instead of submitting
-(useful for practice on past problems). oj submit works for ongoing contests only.`,
+(useful for practice on past problems). Live oj submit works for ongoing contests only.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return problemIDRequired

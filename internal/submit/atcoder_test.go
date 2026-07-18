@@ -3,6 +3,7 @@ package submit
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,5 +53,32 @@ func TestOJCookiePath(t *testing.T) {
 	}
 	if path == "" {
 		t.Fatal("expected non-empty cookie path")
+	}
+}
+
+func TestPythonFromShebang(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "oj")
+	content := "#!/usr/bin/custom-python\n# -*- coding: utf-8 -*-\n"
+	if err := os.WriteFile(script, []byte(content), 0o755); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	got := pythonFromShebang(script)
+	if got != "/usr/bin/custom-python" {
+		t.Fatalf("got %q, want /usr/bin/custom-python", got)
+	}
+}
+
+func TestWrapOJSubmitErrorMemoryLimit(t *testing.T) {
+	err := wrapOJSubmitError(errOJNotFound, "assert parsed_memory_limit\n")
+	if !strings.Contains(err.Error(), "memory-limit parse failed") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestWrapOJSubmitErrorGeneric(t *testing.T) {
+	err := wrapOJSubmitError(errOJNotFound, "some other failure")
+	if !strings.Contains(err.Error(), "cpx submit --copy") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
