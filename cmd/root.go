@@ -40,6 +40,7 @@ merge libraries, and submit (or copy) solutions.`,
 	root.AddCommand(setupCmd(app))
 	root.AddCommand(testCmd(app))
 	root.AddCommand(submitCmd(app))
+	root.AddCommand(newLibCmd(app))
 	return root
 }
 

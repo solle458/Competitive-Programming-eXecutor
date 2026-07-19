@@ -12,6 +12,7 @@ curl -fsSL https://raw.githubusercontent.com/solle458/Competitive-Programming-eX
 
 ```bash
 cpx init
+cpx new-lib graph/dsu.hpp
 cpx setup abc464
 cd abc464
 cpx test a
@@ -65,6 +66,7 @@ file:
 
 - 問題ディレクトリ名は問題インデックスの小文字（`A` → `a`）
 - `test` / `merge` / `submit` の `<problem-path>` は `a` または `<contest-id>/a` 形式
+- `new-lib` の `<path>` は `library_dirs` からの相対パス（例: `graph/dsu.hpp`）
 
 ## Commands
 
@@ -83,6 +85,28 @@ file:
 - `.cpx/templates/source/source_template.cpp` を作成
 - `.cpx/templates/library/library_template.hpp` を作成
 - `library/` ディレクトリは作成しない（config にパスのみ記載）
+
+---
+
+### `cpx new-lib <path>`
+
+ライブラリテンプレートからヘッダファイルを作成する。
+
+| | |
+|---|---|
+| 引数 | `<path>`（`library_dirs` からの相対パス。例: `graph/dsu.hpp`） |
+| フラグ | `-d, --dir` `library_dirs` の index（default: `0`） |
+
+**動作:**
+
+- `config.library_dirs[--dir]` 配下に `<path>` を作成
+- `.cpx/templates/library/library_template.hpp` をコピー
+- 作成パスと `#include "..."` 行を表示
+
+**注意:**
+
+- 既存ファイルがある場合はエラー（上書きしない）
+- 親ディレクトリがなければ作成する
 
 ---
 
@@ -194,11 +218,13 @@ file:
 
 ```
 cpx init
+cpx new-lib graph/dsu.hpp
 cpx setup abc464 -l cpp
 cd abc464
 
 # 問題 A
 vim a/main.cpp
+# #include "graph/dsu.hpp" を追加
 cpx test a
 cpx merge a
 cpx submit a        # 本番提出（開催中のみ）
