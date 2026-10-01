@@ -19,14 +19,10 @@ func mergeCmd(app *app.App) *cobra.Command {
 		Short: "Merge libraries into a submission file",
 		Long:  `Expand library includes in main.<lang> and write the result to submission.<lang>.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			extension := lang
-			if extension == "" {
-				extension = app.Config.File.DefaultLang
-			}
 			if len(args) < 1 {
 				return errors.New("problem id is required")
 			}
-			p, err := problem.Open(args[0], extension)
+			p, err := problem.Open(args[0], app.Config.ResolveLang(lang))
 			if err != nil {
 				return err
 			}
@@ -39,7 +35,7 @@ func mergeCmd(app *app.App) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 
 	return cmd
 }

@@ -33,7 +33,7 @@ func setupCmd(app *app.App) *cobra.Command {
 			}
 			err = atcoder.Setup(setup.Request{
 				ContestID:  contestID,
-				Lang:       lang,
+				Lang:       app.Config.ResolveLang(lang),
 				WorkingDir: wd,
 				Config:     app.Config,
 			})
@@ -44,6 +44,6 @@ func setupCmd(app *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	return cmd
 }

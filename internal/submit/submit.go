@@ -27,12 +27,6 @@ func Run(cfg *config.Config, req Request) error {
 	if err != nil {
 		return err
 	}
-	if p.Lang == "" {
-		p.Lang = cfg.File.DefaultLang
-	}
-	if p.Lang == "" {
-		p.Lang = "cpp"
-	}
 
 	if !req.SkipTest {
 		if err := test.RunSamples(p, req.TimeLimit, cfg); err != nil {

@@ -24,7 +24,7 @@ func testCmd(app *app.App) *cobra.Command {
 			if len(args) < 1 {
 				return errors.New("problem id is required")
 			}
-			p, err := problem.Open(args[0], lang)
+			p, err := problem.Open(args[0], app.Config.ResolveLang(lang))
 			if err != nil {
 				return err
 			}
@@ -36,7 +36,7 @@ func testCmd(app *app.App) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
 	return cmd
 }

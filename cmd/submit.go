@@ -34,7 +34,7 @@ Use --copy to copy the merged source to the clipboard instead of submitting
 			}
 			err := submit.Run(app.Config, submit.Request{
 				ProblemPath: args[0],
-				Lang:        lang,
+				Lang:        app.Config.ResolveLang(lang),
 				TimeLimit:   timeLimit,
 				SkipTest:    skipTest,
 				Copy:        copy,
@@ -46,7 +46,7 @@ Use --copy to copy the merged source to the clipboard instead of submitting
 		},
 	}
 
-	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
 	cmd.Flags().BoolVar(&skipTest, "skip-test", false, "skip sample tests before submit or copy")
 	cmd.Flags().BoolVarP(&copy, "copy", "c", false, "copy merged source to clipboard instead of submitting")

@@ -38,7 +38,7 @@ file:
 |------|------|
 | `root_dir` | ワークスペースルート |
 | `library_dirs` | `merge` で検索するライブラリディレクトリ |
-| `default_lang` | `merge` の `--lang` 未指定時のデフォルト |
+| `default_lang` | `test` / `setup` / `merge` / `submit` の `--lang` 未指定時のデフォルト。空なら `cpp` |
 | `atcoder_session` | AtCoder の `REVEL_SESSION` cookie 値 |
 
 `atcoder_session` は `ATCODER_SESSION` 環境変数でも指定可能（環境変数が優先）。
@@ -117,7 +117,7 @@ file:
 | | |
 |---|---|
 | 引数 | `<contest-id>`（例: `abc464`） |
-| フラグ | `-l, --lang` 言語（default: `cpp`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 
 **動作:**
 
@@ -142,7 +142,7 @@ file:
 | | |
 |---|---|
 | 引数 | `<problem-path>`（例: `a`, `abc464/a`） |
-| フラグ | `-l, --lang` 言語（default: `cpp`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 | | `-t, --time-limit` 制限時間秒（default: `2`） |
 
 **動作:**
@@ -162,7 +162,7 @@ file:
 | | |
 |---|---|
 | 引数 | `<problem-path>` |
-| フラグ | `-l, --lang` 言語（default: 空 → `config.default_lang`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 
 **動作:**
 
@@ -184,7 +184,7 @@ file:
 | | |
 |---|---|
 | 引数 | `<problem-path>` |
-| フラグ | `-l, --lang` 言語（default: `cpp`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 | | `-t, --time-limit` テスト制限時間秒（default: `2`） |
 | | `--skip-test` テストをスキップして merge + submit のみ |
 | | `-c, --copy` 提出せずマージ結果をクリップボードへコピー（過去問向け） |

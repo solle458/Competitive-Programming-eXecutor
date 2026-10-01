@@ -255,6 +255,36 @@ func TestE2ETestPython(t *testing.T) {
 	}
 }
 
+func TestE2ETestHonorsDefaultLang(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	cfgPath := filepath.Join(dir, ".cpx", "config.yaml")
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := strings.Replace(string(data), "default_lang: cpp", "default_lang: py", 1)
+	if updated == string(data) {
+		t.Fatalf("default_lang not rewritten:\n%s", data)
+	}
+	if err := os.WriteFile(cfgPath, []byte(updated), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "print(42)\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "42\n")
+	stdout, stderr, code := runAt(t, dir, "test", "a")
+	if code != 0 || stderr != "" {
+		t.Fatalf("code=%d stderr=%q stdout=%q", code, stderr, stdout)
+	}
+	if normalizeDurations(stdout) != sampleAC {
+		t.Fatalf("stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleAC)
+	}
+}
+
 func TestE2ETestCpp(t *testing.T) {
 	if _, err := exec.LookPath("g++"); err != nil {
 		t.Skip("g++ not installed")
@@ -446,7 +476,7 @@ const mergeUsage = `Usage:
 
 Flags:
   -h, --help          help for merge
-  -l, --lang string   language of the source code
+  -l, --lang string   language of the source code (default: default_lang in config, else cpp)
 
 `
 
@@ -455,7 +485,7 @@ const testUsage = `Usage:
 
 Flags:
   -h, --help             help for test
-  -l, --lang string      language of the source code (default "cpp")
+  -l, --lang string      language of the source code (default: default_lang in config, else cpp)
   -t, --time-limit int   time limit in seconds for sample tests (default 2)
 
 `
@@ -466,7 +496,7 @@ const submitUsage = `Usage:
 Flags:
   -c, --copy             copy merged source to clipboard instead of submitting
   -h, --help             help for submit
-  -l, --lang string      language of the source code (default "cpp")
+  -l, --lang string      language of the source code (default: default_lang in config, else cpp)
       --skip-test        skip sample tests before submit or copy
   -t, --time-limit int   time limit in seconds for sample tests (default 2)
 
