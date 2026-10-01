@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -11,7 +12,9 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 var cpxBin string
@@ -285,6 +288,53 @@ func TestE2ETestHonorsDefaultLang(t *testing.T) {
 	}
 }
 
+func TestE2ETestKillsAtTimeLimit(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "while True:\n    pass\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "42\n")
+
+	stdout, stderr, code := runAtDeadline(t, 5*time.Second, dir, "test", "a", "-l", "py", "-t", "1")
+	if code != 1 {
+		t.Fatalf("exit %d, want 1\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if stderr != "Error: samples did not pass: TLE\n" {
+		t.Fatalf("stderr\n got %q\nwant %q", stderr, "Error: samples did not pass: TLE\n")
+	}
+	if normalizeDurations(stdout) != sampleTLE {
+		t.Fatalf("stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleTLE)
+	}
+	assertFile(t, filepath.Join(dir, "a", "test", "sample-1.test"), "")
+}
+
+func TestE2ETestRuntimeErrorContinues(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "import sys\nn = sys.stdin.read().strip()\nif n == \"bad\":\n    sys.stderr.write(\"boom\")\n    raise SystemExit(3)\nprint(42)\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "bad\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "0\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-2.in"), "ok\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-2.out"), "7\n")
+
+	stdout, stderr, code := runAt(t, dir, "test", "a", "-l", "py", "-t", "1")
+	if code != 1 {
+		t.Fatalf("exit %d, want 1\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if stderr != "Error: samples did not pass: RE\n" {
+		t.Fatalf("stderr\n got %q\nwant %q", stderr, "Error: samples did not pass: RE\n")
+	}
+	if normalizeDurations(stdout) != sampleRE {
+		t.Fatalf("stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleRE)
+	}
+	assertFile(t, filepath.Join(dir, "a", "test", "sample-1.test"), "")
+	assertFile(t, filepath.Join(dir, "a", "test", "sample-2.test"), "42\n")
+}
+
 func TestE2ETestCpp(t *testing.T) {
 	if _, err := exec.LookPath("g++"); err != nil {
 		t.Skip("g++ not installed")
@@ -391,6 +441,33 @@ func workspace(t *testing.T) string {
 		t.Fatalf("init stdout\n got %q\nwant %q", stdout, want)
 	}
 	return dir
+}
+
+func runAtDeadline(t *testing.T, limit time.Duration, dir string, args ...string) (string, string, int) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, cpxBin, args...)
+	cmd.Dir = dir
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		if cmd.Process != nil {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+		t.Fatalf("cpx %s did not finish within %s\nstdout %q\nstderr %q", strings.Join(args, " "), limit, stdout.String(), stderr.String())
+	}
+	if err == nil {
+		return stdout.String(), stderr.String(), 0
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("cpx %s: %v\nstderr: %s", strings.Join(args, " "), err, stderr.String())
+	}
+	return stdout.String(), stderr.String(), exitErr.ExitCode()
 }
 
 func runAt(t *testing.T, dir string, args ...string) (string, string, int) {
@@ -513,6 +590,41 @@ const sampleAC = `========================================
 ========================================
 [INFO] slowest execution time: <duration>
 [STATUS] AC
+========================================
+`
+
+const sampleTLE = `========================================
+[INFO] sample-1: TLE
+[INFO] Execution time: <duration>
+[INFO] Expected: 42
+
+[INFO] Actual: 
+========================================
+========================================
+[INFO] slowest execution time: <duration>
+[STATUS] TLE
+========================================
+`
+
+const sampleRE = `========================================
+[INFO] sample-1: RE
+[INFO] Execution time: <duration>
+[INFO] Expected: 0
+
+[INFO] Actual: 
+[INFO] Stderr: boom
+========================================
+========================================
+[INFO] sample-2: WA
+[INFO] Execution time: <duration>
+[INFO] Expected: 7
+
+[INFO] Actual: 42
+
+========================================
+========================================
+[INFO] slowest execution time: <duration>
+[STATUS] RE
 ========================================
 `
 

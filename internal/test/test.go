@@ -1,6 +1,8 @@
 package test
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -102,10 +104,20 @@ func buildCpp(p problem.Problem, cfg *config.Config) ([]string, error) {
 	return []string{outPath}, nil
 }
 
+type runFinish int
+
+const (
+	ran runFinish = iota
+	timedOut
+	crashed
+)
+
 type sampleRun struct {
 	name     string
 	actual   string
+	stderr   string
 	duration time.Duration
+	finish   runFinish
 }
 
 func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, error) {
@@ -118,33 +130,27 @@ func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, er
 		return nil, fmt.Errorf("no input files found in %s", testDir)
 	}
 
+	limit := time.Duration(timeLimit) * time.Second
 	runs := make([]sampleRun, 0, len(inputs))
 	for _, inputFile := range inputs {
 		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
-		cmd := exec.Command(argv[0], argv[1:]...)
-
-		in, err := os.Open(inputFile)
-		if err != nil {
-			return nil, err
-		}
-		cmd.Stdin = in
-
-		start := time.Now()
-		output, err := cmd.Output()
-		in.Close()
-		duration := time.Since(start)
+		actual, stderr, duration, finish, err := runSample(argv, inputFile, limit)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", stem, err)
 		}
-
 		testPath := filepath.Join(testDir, stem+".test")
-		if err := os.WriteFile(testPath, output, 0o644); err != nil {
+		if err := os.WriteFile(testPath, []byte(actual), 0o644); err != nil {
 			return nil, err
 		}
-		runs = append(runs, sampleRun{name: stem, actual: string(output), duration: duration})
+		runs = append(runs, sampleRun{
+			name:     stem,
+			actual:   actual,
+			stderr:   stderr,
+			duration: duration,
+			finish:   finish,
+		})
 	}
 
-	limit := time.Duration(timeLimit) * time.Second
 	results := make([]CaseResult, 0, len(runs))
 	for _, run := range runs {
 		expected, err := os.ReadFile(filepath.Join(testDir, run.name+".out"))
@@ -153,23 +159,73 @@ func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, er
 		}
 		results = append(results, CaseResult{
 			Name:     run.name,
-			Verdict:  judge(string(expected), run.actual, run.duration, limit),
+			Verdict:  judge(string(expected), run.actual, run.duration, limit, run.finish),
 			Duration: run.duration,
 			Expected: string(expected),
 			Actual:   run.actual,
+			Stderr:   run.stderr,
 		})
 	}
 	return results, nil
 }
 
-func judge(expected, actual string, duration, limit time.Duration) Verdict {
-	if strings.TrimSpace(actual) != strings.TrimSpace(expected) {
-		return WA
+func runSample(argv []string, inputPath string, limit time.Duration) (string, string, time.Duration, runFinish, error) {
+	in, err := os.Open(inputPath)
+	if err != nil {
+		return "", "", 0, ran, err
 	}
-	if duration > limit {
+	defer in.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+	cmd.Stdin = in
+	cmd.WaitDelay = time.Second
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	start := time.Now()
+	runErr := cmd.Run()
+	duration := time.Since(start)
+	actual := stdout.String()
+	errText := stderr.String()
+	if runErr == nil {
+		return actual, errText, duration, ran, nil
+	}
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return actual, errText, duration, timedOut, nil
+	}
+	var exitErr *exec.ExitError
+	if errors.As(runErr, &exitErr) {
+		return actual, errText, duration, crashed, nil
+	}
+	return actual, errText, duration, ran, runErr
+}
+
+func judge(expected, actual string, duration, limit time.Duration, finish runFinish) Verdict {
+	switch finish {
+	case timedOut:
 		return TLE
+	case crashed:
+		return RE
+	default:
+		if strings.TrimSpace(actual) != strings.TrimSpace(expected) {
+			return WA
+		}
+		if duration > limit {
+			return TLE
+		}
+		return AC
 	}
-	return AC
+}
+
+func stderrTail(s string) string {
+	const max = 1024
+	if len(s) <= max {
+		return s
+	}
+	return s[len(s)-max:]
 }
 
 func printResults(results []CaseResult) Verdict {
@@ -185,6 +241,9 @@ func printResults(results []CaseResult) Verdict {
 		fmt.Printf("[INFO] Execution time: %s\n", r.Duration)
 		fmt.Printf("[INFO] Expected: %s\n", r.Expected)
 		fmt.Printf("[INFO] Actual: %s\n", r.Actual)
+		if r.Verdict == RE {
+			fmt.Printf("[INFO] Stderr: %s\n", stderrTail(r.Stderr))
+		}
 		fmt.Println("========================================")
 	}
 	fmt.Println("========================================")
