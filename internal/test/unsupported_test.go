@@ -8,7 +8,7 @@ import (
 )
 
 func TestRunSamplesUnsupportedLanguage(t *testing.T) {
-	err := RunSamples(problem.Problem{Dir: "a", Lang: "rs"}, 2, config.NewConfig())
+	err := RunSamples(problem.Problem{Dir: "a", Lang: "rs"}, Options{TimeLimit: 2}, config.NewConfig())
 	if err == nil {
 		t.Fatal("expected error")
 	}

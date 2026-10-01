@@ -146,6 +146,7 @@ file:
 | 引数 | `<problem-path>`（例: `a`, `abc464/a`） |
 | フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 | | `-t, --time-limit` 制限時間秒（default: `2`） |
+| | `--eps` 浮動小数の許容誤差（default: `0`）。`0` は空白を除いた完全一致。正の値はトークンごとに絶対誤差または相対誤差で比較し、空白の並びは見ない |
 
 **動作:**
 
@@ -197,6 +198,7 @@ file:
 | 引数 | `<problem-path>` |
 | フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 | | `-t, --time-limit` テスト制限時間秒（default: `2`） |
+| | `--eps` サンプル比較の許容誤差（default: `0`）。意味は `cpx test` と同じ |
 | | `--skip-test` テストをスキップして merge + submit のみ |
 | | `-c, --copy` 提出せずマージ結果をクリップボードへコピー（過去問向け） |
 

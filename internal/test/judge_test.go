@@ -29,9 +29,38 @@ func TestJudge(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := judge(tc.expected, tc.actual, tc.duration, limit, tc.finish)
+			got := judge(tc.expected, tc.actual, tc.duration, limit, tc.finish, 0)
 			if got != tc.want {
 				t.Fatalf("judge(%q, %q, %s, %d) = %s, want %s", tc.expected, tc.actual, tc.duration, tc.finish, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestJudgeEps(t *testing.T) {
+	limit := 2 * time.Second
+	cases := []struct {
+		name     string
+		expected string
+		actual   string
+		eps      float64
+		want     Verdict
+	}{
+		{name: "exact", expected: "1.0 2\n", actual: "1.0 2\n", eps: 1e-6, want: AC},
+		{name: "1e-9 off", expected: "1.000000000\n", actual: "1.000000001\n", eps: 1e-6, want: AC},
+		{name: "1e-3 off", expected: "1.000\n", actual: "1.001\n", eps: 1e-6, want: WA},
+		{name: "token count", expected: "1 2\n", actual: "1\n", eps: 1e-6, want: WA},
+		{name: "non numeric", expected: "foo\n", actual: "bar\n", eps: 1e-6, want: WA},
+		{name: "eps 0 formatting", expected: "1.0\n", actual: "1.00\n", eps: 0, want: WA},
+		{name: "relative", expected: "1000\n", actual: "1000.0005\n", eps: 1e-6, want: AC},
+		{name: "whitespace", expected: "1.0 2.0\n", actual: "1.0\n2.0\n", eps: 1e-6, want: AC},
+		{name: "whitespace eps 0", expected: "1.0 2.0\n", actual: "1.0\n2.0\n", eps: 0, want: WA},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := judge(tc.expected, tc.actual, time.Millisecond, limit, ran, tc.eps)
+			if got != tc.want {
+				t.Fatalf("judge(%q, %q, eps %g) = %s, want %s", tc.expected, tc.actual, tc.eps, got, tc.want)
 			}
 		})
 	}

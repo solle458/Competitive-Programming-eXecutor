@@ -14,6 +14,7 @@ func testCmd(app *app.App) *cobra.Command {
 	var (
 		lang      string
 		timeLimit int
+		eps       float64
 	)
 
 	cmd := &cobra.Command{
@@ -28,7 +29,7 @@ func testCmd(app *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			err = test.RunSamples(p, timeLimit, app.Config)
+			err = test.RunSamples(p, test.Options{TimeLimit: timeLimit, Eps: eps}, app.Config)
 			if errors.Is(err, test.ErrNotAccepted) {
 				cmd.SilenceUsage = true
 			}
@@ -38,5 +39,6 @@ func testCmd(app *app.App) *cobra.Command {
 
 	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
+	cmd.Flags().Float64Var(&eps, "eps", 0, "absolute or relative error allowed for floating-point outputs")
 	return cmd
 }

@@ -335,6 +335,35 @@ func TestE2ETestRuntimeErrorContinues(t *testing.T) {
 	assertFile(t, filepath.Join(dir, "a", "test", "sample-2.test"), "42\n")
 }
 
+func TestE2ETestEps(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "print(\"0.3333334\")\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "0.3333333\n")
+
+	stdout, stderr, code := runAt(t, dir, "test", "a", "-l", "py", "--eps", "1e-6")
+	if code != 0 || stderr != "" {
+		t.Fatalf("eps code=%d stderr=%q stdout=%q", code, stderr, stdout)
+	}
+	if normalizeDurations(stdout) != sampleEpsAC {
+		t.Fatalf("eps stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleEpsAC)
+	}
+
+	stdout, stderr, code = runAt(t, dir, "test", "a", "-l", "py")
+	if code != 1 {
+		t.Fatalf("exact exit %d, want 1\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if stderr != "Error: samples did not pass: WA\n" {
+		t.Fatalf("exact stderr\n got %q\nwant %q", stderr, "Error: samples did not pass: WA\n")
+	}
+	if normalizeDurations(stdout) != sampleEpsWA {
+		t.Fatalf("exact stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleEpsWA)
+	}
+}
+
 func TestE2ETestCpp(t *testing.T) {
 	if _, err := exec.LookPath("g++"); err != nil {
 		t.Skip("g++ not installed")
@@ -561,6 +590,7 @@ const testUsage = `Usage:
   cpx test <problem> [flags]
 
 Flags:
+      --eps float        absolute or relative error allowed for floating-point outputs
   -h, --help             help for test
   -l, --lang string      language of the source code (default: default_lang in config, else cpp)
   -t, --time-limit int   time limit in seconds for sample tests (default 2)
@@ -572,6 +602,7 @@ const submitUsage = `Usage:
 
 Flags:
   -c, --copy             copy merged source to clipboard instead of submitting
+      --eps float        absolute or relative error allowed for floating-point outputs
   -h, --help             help for submit
   -l, --lang string      language of the source code (default: default_lang in config, else cpp)
       --skip-test        skip sample tests before submit or copy
@@ -590,6 +621,34 @@ const sampleAC = `========================================
 ========================================
 [INFO] slowest execution time: <duration>
 [STATUS] AC
+========================================
+`
+
+const sampleEpsAC = `========================================
+[INFO] sample-1: AC
+[INFO] Execution time: <duration>
+[INFO] Expected: 0.3333333
+
+[INFO] Actual: 0.3333334
+
+========================================
+========================================
+[INFO] slowest execution time: <duration>
+[STATUS] AC
+========================================
+`
+
+const sampleEpsWA = `========================================
+[INFO] sample-1: WA
+[INFO] Execution time: <duration>
+[INFO] Expected: 0.3333333
+
+[INFO] Actual: 0.3333334
+
+========================================
+========================================
+[INFO] slowest execution time: <duration>
+[STATUS] WA
 ========================================
 `
 

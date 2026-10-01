@@ -18,6 +18,7 @@ type Request struct {
 	ProblemPath string
 	Lang        string
 	TimeLimit   int
+	Eps         float64
 	SkipTest    bool
 	Copy        bool
 }
@@ -29,7 +30,7 @@ func Run(cfg *config.Config, req Request) error {
 	}
 
 	if !req.SkipTest {
-		if err := test.RunSamples(p, req.TimeLimit, cfg); err != nil {
+		if err := test.RunSamples(p, test.Options{TimeLimit: req.TimeLimit, Eps: req.Eps}, cfg); err != nil {
 			if errors.Is(err, test.ErrNotAccepted) {
 				return fmt.Errorf("%w (use --skip-test to submit anyway)", err)
 			}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -52,17 +53,22 @@ type CaseResult struct {
 
 var ErrNotAccepted = errors.New("samples did not pass")
 
+type Options struct {
+	TimeLimit int
+	Eps       float64
+}
+
 var languages = map[string]func(problem.Problem, *config.Config) ([]string, error){
 	"cpp": buildCpp,
 	"py":  buildPy,
 }
 
-func RunSamples(p problem.Problem, timeLimit int, cfg *config.Config) error {
+func RunSamples(p problem.Problem, opts Options, cfg *config.Config) error {
 	argv, err := build(p, cfg)
 	if err != nil {
 		return err
 	}
-	results, err := runCases(p, argv, timeLimit)
+	results, err := runCases(p, argv, opts)
 	if err != nil {
 		return err
 	}
@@ -120,7 +126,7 @@ type sampleRun struct {
 	finish   runFinish
 }
 
-func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, error) {
+func runCases(p problem.Problem, argv []string, opts Options) ([]CaseResult, error) {
 	testDir := p.SampleDir()
 	inputs, err := inputFiles(testDir)
 	if err != nil {
@@ -130,7 +136,7 @@ func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, er
 		return nil, fmt.Errorf("no input files found in %s", testDir)
 	}
 
-	limit := time.Duration(timeLimit) * time.Second
+	limit := time.Duration(opts.TimeLimit) * time.Second
 	runs := make([]sampleRun, 0, len(inputs))
 	for _, inputFile := range inputs {
 		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
@@ -159,7 +165,7 @@ func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, er
 		}
 		results = append(results, CaseResult{
 			Name:     run.name,
-			Verdict:  judge(string(expected), run.actual, run.duration, limit, run.finish),
+			Verdict:  judge(string(expected), run.actual, run.duration, limit, run.finish, opts.Eps),
 			Duration: run.duration,
 			Expected: string(expected),
 			Actual:   run.actual,
@@ -203,14 +209,14 @@ func runSample(argv []string, inputPath string, limit time.Duration) (string, st
 	return actual, errText, duration, ran, runErr
 }
 
-func judge(expected, actual string, duration, limit time.Duration, finish runFinish) Verdict {
+func judge(expected, actual string, duration, limit time.Duration, finish runFinish, eps float64) Verdict {
 	switch finish {
 	case timedOut:
 		return TLE
 	case crashed:
 		return RE
 	default:
-		if strings.TrimSpace(actual) != strings.TrimSpace(expected) {
+		if !outputsMatch(expected, actual, eps) {
 			return WA
 		}
 		if duration > limit {
@@ -218,6 +224,33 @@ func judge(expected, actual string, duration, limit time.Duration, finish runFin
 		}
 		return AC
 	}
+}
+
+func outputsMatch(expected, actual string, eps float64) bool {
+	if eps <= 0 {
+		return strings.TrimSpace(actual) == strings.TrimSpace(expected)
+	}
+	want := strings.Fields(expected)
+	got := strings.Fields(actual)
+	if len(want) != len(got) {
+		return false
+	}
+	for i := range want {
+		if want[i] == got[i] {
+			continue
+		}
+		e, errE := strconv.ParseFloat(want[i], 64)
+		a, errA := strconv.ParseFloat(got[i], 64)
+		if errE != nil || errA != nil {
+			return false
+		}
+		diff := math.Abs(a - e)
+		if diff <= eps || diff <= eps*math.Abs(e) {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func stderrTail(s string) string {
