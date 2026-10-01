@@ -14,6 +14,39 @@ import (
 	"Competitive-Programming-eXecutor/internal/problem"
 )
 
+type Verdict int
+
+const (
+	AC Verdict = iota
+	TLE
+	WA
+	RE
+)
+
+func (v Verdict) String() string {
+	switch v {
+	case AC:
+		return "AC"
+	case TLE:
+		return "TLE"
+	case WA:
+		return "WA"
+	case RE:
+		return "RE"
+	default:
+		return fmt.Sprintf("Verdict(%d)", int(v))
+	}
+}
+
+type CaseResult struct {
+	Name     string
+	Verdict  Verdict
+	Duration time.Duration
+	Expected string
+	Actual   string
+	Stderr   string
+}
+
 var languages = map[string]func(problem.Problem, *config.Config) ([]string, error){
 	"cpp": buildCpp,
 	"py":  buildPy,
@@ -24,11 +57,12 @@ func RunSamples(p problem.Problem, timeLimit int, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	executionTimes, err := runCases(p, argv)
+	results, err := runCases(p, argv, timeLimit)
 	if err != nil {
 		return err
 	}
-	return compare(p, executionTimes, timeLimit)
+	printResults(results)
+	return nil
 }
 
 func build(p problem.Problem, cfg *config.Config) ([]string, error) {
@@ -62,18 +96,24 @@ func buildCpp(p problem.Problem, cfg *config.Config) ([]string, error) {
 	return []string{outPath}, nil
 }
 
-func runCases(p problem.Problem, argv []string) (map[string]time.Duration, error) {
+type sampleRun struct {
+	name     string
+	actual   string
+	duration time.Duration
+}
+
+func runCases(p problem.Problem, argv []string, timeLimit int) ([]CaseResult, error) {
 	testDir := p.SampleDir()
-	inputFiles, err := inputFiles(testDir)
+	inputs, err := inputFiles(testDir)
 	if err != nil {
 		return nil, err
 	}
-	if len(inputFiles) == 0 {
+	if len(inputs) == 0 {
 		return nil, fmt.Errorf("no input files found in %s", testDir)
 	}
 
-	executionTimes := make(map[string]time.Duration, len(inputFiles))
-	for _, inputFile := range inputFiles {
+	runs := make([]sampleRun, 0, len(inputs))
+	for _, inputFile := range inputs {
 		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
 		cmd := exec.Command(argv[0], argv[1:]...)
 
@@ -86,7 +126,7 @@ func runCases(p problem.Problem, argv []string) (map[string]time.Duration, error
 		start := time.Now()
 		output, err := cmd.Output()
 		in.Close()
-		executionTimes[stem] = time.Since(start)
+		duration := time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", stem, err)
 		}
@@ -95,8 +135,56 @@ func runCases(p problem.Problem, argv []string) (map[string]time.Duration, error
 		if err := os.WriteFile(testPath, output, 0o644); err != nil {
 			return nil, err
 		}
+		runs = append(runs, sampleRun{name: stem, actual: string(output), duration: duration})
 	}
-	return executionTimes, nil
+
+	limit := time.Duration(timeLimit) * time.Second
+	results := make([]CaseResult, 0, len(runs))
+	for _, run := range runs {
+		expected, err := os.ReadFile(filepath.Join(testDir, run.name+".out"))
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, CaseResult{
+			Name:     run.name,
+			Verdict:  judge(string(expected), run.actual, run.duration, limit),
+			Duration: run.duration,
+			Expected: string(expected),
+			Actual:   run.actual,
+		})
+	}
+	return results, nil
+}
+
+func judge(expected, actual string, duration, limit time.Duration) Verdict {
+	if strings.TrimSpace(actual) != strings.TrimSpace(expected) {
+		return WA
+	}
+	if duration > limit {
+		return TLE
+	}
+	return AC
+}
+
+func printResults(results []CaseResult) {
+	slowest := time.Duration(0)
+	worst := AC
+	for _, r := range results {
+		slowest = max(slowest, r.Duration)
+		if r.Verdict > worst {
+			worst = r.Verdict
+		}
+		fmt.Println("========================================")
+		fmt.Printf("[INFO] %s: %s\n", r.Name, r.Verdict)
+		fmt.Printf("[INFO] Execution time: %s\n", r.Duration)
+		fmt.Printf("[INFO] Expected: %s\n", r.Expected)
+		fmt.Printf("[INFO] Actual: %s\n", r.Actual)
+		fmt.Println("========================================")
+	}
+	fmt.Println("========================================")
+	fmt.Printf("[INFO] slowest execution time: %s\n", slowest.String())
+	fmt.Printf("[STATUS] %s\n", worst)
+	fmt.Println("========================================")
 }
 
 func inputFiles(testDir string) ([]string, error) {
@@ -122,64 +210,6 @@ func inputFiles(testDir string) ([]string, error) {
 	return inputs, nil
 }
 
-func compare(p problem.Problem, executionTimes map[string]time.Duration, timeLimit int) error {
-	testDir := p.SampleDir()
-	inputs, err := inputFiles(testDir)
-	if err != nil {
-		return err
-	}
-	if len(inputs) == 0 {
-		return fmt.Errorf("no input files found in %s", testDir)
-	}
-
-	status := "AC"
-	slowestExecutionTime := time.Duration(0)
-	timeLimitDuration := time.Duration(timeLimit) * time.Second
-
-	for _, inputFile := range inputs {
-		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
-		testPath := filepath.Join(testDir, stem+".test")
-		outPath := filepath.Join(testDir, stem+".out")
-
-		actual, err := os.ReadFile(testPath)
-		if err != nil {
-			return err
-		}
-		expected, err := os.ReadFile(outPath)
-		if err != nil {
-			return err
-		}
-
-		executionTime, ok := executionTimes[stem]
-		if !ok {
-			return fmt.Errorf("execution time not found for %s", stem)
-		}
-		slowestExecutionTime = max(slowestExecutionTime, executionTime)
-
-		caseStatus := "AC"
-		if strings.TrimSpace(string(actual)) != strings.TrimSpace(string(expected)) {
-			caseStatus = "WA"
-		} else if executionTime > timeLimitDuration {
-			caseStatus = "TLE"
-		}
-
-		fmt.Println("========================================")
-		fmt.Printf("[INFO] %s: %s\n", stem, caseStatus)
-		fmt.Printf("[INFO] Execution time: %s\n", executionTime)
-		fmt.Printf("[INFO] Expected: %s\n", string(expected))
-		fmt.Printf("[INFO] Actual: %s\n", string(actual))
-		fmt.Println("========================================")
-
-		status = worseStatus(status, caseStatus)
-	}
-
-	fmt.Println("========================================")
-	fmt.Printf("[INFO] slowest execution time: %s\n", slowestExecutionTime.String())
-	fmt.Printf("[STATUS] %s\n", status)
-	fmt.Println("========================================")
-	return nil
-}
-
 func naturalLess(a, b string) bool {
 	aPrefix, aNum, aHasNum := splitNumericSuffix(a)
 	bPrefix, bNum, bHasNum := splitNumericSuffix(b)
@@ -202,16 +232,4 @@ func splitNumericSuffix(s string) (string, int, bool) {
 	}
 	n, _ := strconv.Atoi(s[i:])
 	return s[:i], n, true
-}
-
-func worseStatus(current, newStatus string) string {
-	priority := map[string]int{
-		"AC":  0,
-		"TLE": 1,
-		"WA":  2,
-	}
-	if priority[newStatus] > priority[current] {
-		return newStatus
-	}
-	return current
 }
