@@ -31,9 +31,24 @@ func TestParseInclude(t *testing.T) {
 }
 
 func TestGenerate(t *testing.T) {
-	root := filepath.Join("..", "..", "test")
-	libraryDir := filepath.Join(root, "library")
-	mainPath := filepath.Join(root, "test_contest", "a", "main.cpp")
+	dir := t.TempDir()
+	libraryDir := filepath.Join(dir, "library")
+	if err := os.MkdirAll(libraryDir, 0o755); err != nil {
+		t.Fatalf("mkdir library: %v", err)
+	}
+	util := "#pragma once\n#include <vector>\n/* -- library code --*/\nclass Util {};\n/* -- library code --*/\n"
+	widget := "#pragma once\n#include \"util.hpp\"\n/* -- library code --*/\nclass Test {};\n/* -- library code --*/\n"
+	if err := os.WriteFile(filepath.Join(libraryDir, "util.hpp"), []byte(util), 0o644); err != nil {
+		t.Fatalf("write util.hpp: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(libraryDir, "widget.hpp"), []byte(widget), 0o644); err != nil {
+		t.Fatalf("write widget.hpp: %v", err)
+	}
+	mainPath := filepath.Join(dir, "main.cpp")
+	main := "#include <iostream>\n#include \"widget.hpp\"\n" + LibraryMarker + "\nint main() {}\n"
+	if err := os.WriteFile(mainPath, []byte(main), 0o644); err != nil {
+		t.Fatalf("write main.cpp: %v", err)
+	}
 
 	source, err := os.ReadFile(mainPath)
 	if err != nil {
