@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -47,6 +48,8 @@ type CaseResult struct {
 	Stderr   string
 }
 
+var ErrNotAccepted = errors.New("samples did not pass")
+
 var languages = map[string]func(problem.Problem, *config.Config) ([]string, error){
 	"cpp": buildCpp,
 	"py":  buildPy,
@@ -61,7 +64,10 @@ func RunSamples(p problem.Problem, timeLimit int, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	printResults(results)
+	worst := printResults(results)
+	if worst != AC {
+		return fmt.Errorf("%w: %s", ErrNotAccepted, worst)
+	}
 	return nil
 }
 
@@ -166,7 +172,7 @@ func judge(expected, actual string, duration, limit time.Duration) Verdict {
 	return AC
 }
 
-func printResults(results []CaseResult) {
+func printResults(results []CaseResult) Verdict {
 	slowest := time.Duration(0)
 	worst := AC
 	for _, r := range results {
@@ -185,6 +191,7 @@ func printResults(results []CaseResult) {
 	fmt.Printf("[INFO] slowest execution time: %s\n", slowest.String())
 	fmt.Printf("[STATUS] %s\n", worst)
 	fmt.Println("========================================")
+	return worst
 }
 
 func inputFiles(testDir string) ([]string, error) {

@@ -3,6 +3,7 @@ package cmd
 import (
 	"Competitive-Programming-eXecutor/internal/app"
 	"Competitive-Programming-eXecutor/internal/submit"
+	"Competitive-Programming-eXecutor/internal/test"
 	"errors"
 
 	"github.com/spf13/cobra"
@@ -31,13 +32,17 @@ Use --copy to copy the merged source to the clipboard instead of submitting
 			if len(args) < 1 {
 				return problemIDRequired
 			}
-			return submit.Run(app.Config, submit.Request{
+			err := submit.Run(app.Config, submit.Request{
 				ProblemPath: args[0],
 				Lang:        lang,
 				TimeLimit:   timeLimit,
 				SkipTest:    skipTest,
 				Copy:        copy,
 			})
+			if errors.Is(err, test.ErrNotAccepted) {
+				cmd.SilenceUsage = true
+			}
+			return err
 		},
 	}
 

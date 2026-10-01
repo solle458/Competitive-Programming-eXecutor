@@ -208,9 +208,12 @@ func TestE2ETestPython(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "b", "main.py"), "print(0)\n")
 	writeFile(t, filepath.Join(dir, "b", "test", "sample-1.in"), "1\n")
 	writeFile(t, filepath.Join(dir, "b", "test", "sample-1.out"), "42\n")
-	stdout, stderr, _ = runAt(t, dir, "test", "b", "-l", "py")
-	if stderr != "" {
-		t.Fatalf("wa stderr %q", stderr)
+	stdout, stderr, code = runAt(t, dir, "test", "b", "-l", "py")
+	if code != 1 {
+		t.Fatalf("wa exit %d, want 1\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if stderr != "Error: samples did not pass: WA\n" {
+		t.Fatalf("wa stderr\n got %q\nwant %q", stderr, "Error: samples did not pass: WA\n")
 	}
 	if normalizeDurations(stdout) != sampleWA {
 		t.Fatalf("wa stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleWA)
@@ -292,6 +295,31 @@ func TestE2ETestCpp(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "bad", "test", "sample-1.test")); !os.IsNotExist(err) {
 		t.Fatalf("sample output should not exist, stat err=%v", err)
+	}
+}
+
+func TestE2ESubmitStopsOnWA(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "print(0)\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "1\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "42\n")
+
+	stdout, stderr, code := runAt(t, dir, "submit", "a", "-l", "py", "--copy")
+	if code != 1 {
+		t.Fatalf("exit %d, want 1\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	const wantErr = "Error: samples did not pass: WA (use --skip-test to submit anyway)\n"
+	if stderr != wantErr {
+		t.Fatalf("stderr\n got %q\nwant %q", stderr, wantErr)
+	}
+	if normalizeDurations(stdout) != sampleWA {
+		t.Fatalf("stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleWA)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "a", "submission.py")); !os.IsNotExist(err) {
+		t.Fatalf("submission.py should not exist, stat err=%v", err)
 	}
 }
 

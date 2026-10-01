@@ -151,7 +151,7 @@ file:
 2. 各 `test/*.in` を stdin に渡して実行し `test/*.test` に出力を保存
 3. `test/*.test` と `test/*.out` を比較（AC / WA / TLE を表示）
 
-**終了コード:** 全ケース AC なら 0、WA / TLE なら 1
+**終了コード:** 全ケース AC なら 0、それ以外は 1（`Error: samples did not pass: WA`）
 
 ---
 
@@ -192,7 +192,7 @@ file:
 **動作:**
 
 1. 問題ディレクトリの存在確認
-2. `cpx test` 相当（`--skip-test` でスキップ可）
+2. `cpx test` 相当（`--skip-test` でスキップ可）。AC 以外は `Error: samples did not pass: WA (use --skip-test to submit anyway)` で終了し、merge / copy / submit しない
 3. `cpx merge` 相当で `submission.{lang}` 生成
 4. `--copy` の場合はクリップボードへコピーして終了
 5. それ以外は `atcoder_session` を [online-judge-tools](https://github.com/online-judge-tools/oj) の cookie.jar に同期し、**MiB 対応パッチ付き**で `oj submit` 相当を実行

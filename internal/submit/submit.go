@@ -1,6 +1,7 @@
 package submit
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -35,6 +36,9 @@ func Run(cfg *config.Config, req Request) error {
 
 	if !req.SkipTest {
 		if err := test.RunSamples(p, req.TimeLimit, cfg); err != nil {
+			if errors.Is(err, test.ErrNotAccepted) {
+				return fmt.Errorf("%w (use --skip-test to submit anyway)", err)
+			}
 			return err
 		}
 	}

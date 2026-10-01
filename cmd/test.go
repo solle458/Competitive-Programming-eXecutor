@@ -28,7 +28,11 @@ func testCmd(app *app.App) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return test.RunSamples(p, timeLimit, app.Config)
+			err = test.RunSamples(p, timeLimit, app.Config)
+			if errors.Is(err, test.ErrNotAccepted) {
+				cmd.SilenceUsage = true
+			}
+			return err
 		},
 	}
 
