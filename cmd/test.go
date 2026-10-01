@@ -24,7 +24,11 @@ func testCmd(app *app.App) *cobra.Command {
 			if len(args) < 1 {
 				return errors.New("problem id is required")
 			}
-			return test.RunSamples(problem.Problem{Dir: args[0], Lang: lang}, timeLimit, app.Config)
+			p, err := problem.Open(args[0], lang)
+			if err != nil {
+				return err
+			}
+			return test.RunSamples(p, timeLimit, app.Config)
 		},
 	}
 

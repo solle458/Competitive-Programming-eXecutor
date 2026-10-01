@@ -232,9 +232,21 @@ func TestE2ETestPython(t *testing.T) {
 
 	stdout, stderr, code = runAt(t, dir, "test", "nomain", "-l", "py")
 	if code != 1 || stdout != "" {
+		t.Fatalf("missing dir code=%d stdout=%q stderr=%q", code, stdout, stderr)
+	}
+	wantErr = "Error: problem \"nomain\" not found in current directory\n" + testUsage
+	if stderr != wantErr {
+		t.Fatalf("missing dir stderr\n got %q\nwant %q", stderr, wantErr)
+	}
+
+	if err := os.MkdirAll(filepath.Join(dir, "nosrc", "test"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stdout, stderr, code = runAt(t, dir, "test", "nosrc", "-l", "py")
+	if code != 1 || stdout != "" {
 		t.Fatalf("missing main code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
-	wantErr = "Error: main.py not found: stat nomain/main.py: no such file or directory\n" + testUsage
+	wantErr = "Error: main.py not found: stat nosrc/main.py: no such file or directory\n" + testUsage
 	if stderr != wantErr {
 		t.Fatalf("missing main stderr\n got %q\nwant %q", stderr, wantErr)
 	}

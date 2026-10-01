@@ -14,52 +14,39 @@ import (
 	"Competitive-Programming-eXecutor/internal/problem"
 )
 
-type language struct {
-	compile func(problem.Problem, *config.Config) (string, error)
-	argv    func(problem.Problem, string) []string
-}
-
-var languages = map[string]language{
-	"cpp": {compile: compileCpp, argv: cppArgv},
-	"py":  {compile: compilePy, argv: pyArgv},
+var languages = map[string]func(problem.Problem, *config.Config) ([]string, error){
+	"cpp": buildCpp,
+	"py":  buildPy,
 }
 
 func RunSamples(p problem.Problem, timeLimit int, cfg *config.Config) error {
-	lang, err := languageByName(p.Lang)
+	argv, err := build(p, cfg)
 	if err != nil {
 		return err
 	}
-	executable, err := lang.compile(p, cfg)
-	if err != nil {
-		return err
-	}
-	executionTimes, err := runCases(p, lang.argv(p, executable))
+	executionTimes, err := runCases(p, argv)
 	if err != nil {
 		return err
 	}
 	return compare(p, executionTimes, timeLimit)
 }
 
-func languageByName(name string) (language, error) {
-	lang, ok := languages[name]
+func build(p problem.Problem, cfg *config.Config) ([]string, error) {
+	fn, ok := languages[p.Lang]
 	if !ok {
-		return language{}, fmt.Errorf("unsupported language %q (supported: cpp, py)", name)
+		return nil, fmt.Errorf("unsupported language %q (supported: cpp, py)", p.Lang)
 	}
-	return lang, nil
+	return fn(p, cfg)
 }
 
-func compilePy(p problem.Problem, _ *config.Config) (string, error) {
+func buildPy(p problem.Problem, _ *config.Config) ([]string, error) {
 	if _, err := os.Stat(p.Source()); err != nil {
-		return "", fmt.Errorf("main.py not found: %w", err)
+		return nil, fmt.Errorf("main.py not found: %w", err)
 	}
-	return "", nil
+	return []string{"python3", p.Source()}, nil
 }
 
-func pyArgv(p problem.Problem, _ string) []string {
-	return []string{"python3", p.Source()}
-}
-
-func compileCpp(p problem.Problem, cfg *config.Config) (string, error) {
+func buildCpp(p problem.Problem, cfg *config.Config) ([]string, error) {
 	outPath := p.Binary()
 	args := []string{"-std=c++20", "-O3"}
 	for _, dir := range cfg.File.LibraryDirs {
@@ -70,13 +57,9 @@ func compileCpp(p problem.Problem, cfg *config.Config) (string, error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return outPath, nil
-}
-
-func cppArgv(_ problem.Problem, executable string) []string {
-	return []string{executable}
+	return []string{outPath}, nil
 }
 
 func runCases(p problem.Problem, argv []string) (map[string]time.Duration, error) {
