@@ -162,12 +162,18 @@ func newAtCoderCollector(session string) *colly.Collector {
 }
 
 type sampleCase struct {
-	input  string
-	output string
+	input     string
+	output    string
+	hasInput  bool
+	hasOutput bool
 }
 
 func downloadSamples(problemDir, contestID, problemID, session string) error {
 	url := fmt.Sprintf("https://atcoder.jp/contests/%s/tasks/%s", contestID, problemID)
+	return downloadSamplesFromURL(problemDir, url, session)
+}
+
+func downloadSamplesFromURL(problemDir, url, session string) error {
 	col := newAtCoderCollector(session)
 
 	samples := make(map[int]*sampleCase)
@@ -181,18 +187,19 @@ func downloadSamples(problemDir, contestID, problemID, session string) error {
 		if h3 == "" {
 			return
 		}
-		pre := strings.TrimRight(e.ChildText("pre"), "\n")
-		if pre == "" {
+		if e.DOM.Find("pre").Length() == 0 {
 			return
 		}
+		pre := strings.TrimRight(e.ChildText("pre"), "\n")
 
 		if m := sampleInputLabel.FindStringSubmatch(h3); m != nil {
 			n, _ := strconv.Atoi(m[1])
 			if samples[n] == nil {
 				samples[n] = &sampleCase{}
 			}
-			if samples[n].input == "" {
+			if !samples[n].hasInput {
 				samples[n].input = pre
+				samples[n].hasInput = true
 			}
 			return
 		}
@@ -201,8 +208,9 @@ func downloadSamples(problemDir, contestID, problemID, session string) error {
 			if samples[n] == nil {
 				samples[n] = &sampleCase{}
 			}
-			if samples[n].output == "" {
+			if !samples[n].hasOutput {
 				samples[n].output = pre
+				samples[n].hasOutput = true
 			}
 		}
 	})
@@ -229,7 +237,7 @@ func downloadSamples(problemDir, contestID, problemID, session string) error {
 
 	for _, i := range indices {
 		s := samples[i]
-		if s.input == "" || s.output == "" {
+		if !s.hasInput || !s.hasOutput {
 			return fmt.Errorf("sample %d is incomplete", i)
 		}
 		inPath := filepath.Join(testDir, fmt.Sprintf("sample-%d.in", i))
