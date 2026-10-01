@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -11,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// submitCmd represents the submit command
 func submitCmd(app *app.App) *cobra.Command {
 	var (
 		lang      string

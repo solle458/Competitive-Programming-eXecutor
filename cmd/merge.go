@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -15,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// mergeCmd represents the merge command
 func mergeCmd(app *app.App) *cobra.Command {
 	var lang string
 

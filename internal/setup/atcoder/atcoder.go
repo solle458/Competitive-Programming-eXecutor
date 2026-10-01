@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"Competitive-Programming-eXecutor/internal/app"
 	"Competitive-Programming-eXecutor/internal/config"
 	"Competitive-Programming-eXecutor/internal/setup"
 	"Competitive-Programming-eXecutor/internal/template"
@@ -79,12 +78,12 @@ func (AtCoder) Supports(contestID string) bool {
 	return exists
 }
 
-func (AtCoder) Setup(req setup.Request, app *app.App) error {
+func (AtCoder) Setup(req setup.Request) error {
 	contestID := strings.ToLower(req.ContestID)
 	lang := req.Lang
 	workingDir := req.WorkingDir
 
-	session := Session(app.Config)
+	session := Session(req.Config)
 
 	problems, err := GetProblems(contestID, session)
 	if err != nil {
@@ -100,7 +99,7 @@ func (AtCoder) Setup(req setup.Request, app *app.App) error {
 	for _, problem := range problems {
 		problem := problem
 		g.Go(func() error {
-			if err := setupProblem(problem, contestID, lang, workingDir, session, app.Config.File.RootDir); err != nil {
+			if err := setupProblem(problem, contestID, lang, workingDir, session, req.Config.File.RootDir); err != nil {
 				if errors.Is(err, noSampleCasesError) {
 					fmt.Printf("[INFO] no sample cases found for %q, skipping\n", problem.ProblemID)
 					return nil

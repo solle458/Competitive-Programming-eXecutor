@@ -2,7 +2,6 @@ package test
 
 import (
 	"Competitive-Programming-eXecutor/internal/config"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,8 +11,6 @@ import (
 	"strings"
 	"time"
 )
-
-var errTestFailed = errors.New("test failed")
 
 func Compile(problemID string, lang string, config *config.Config) (string, error) {
 	switch lang {

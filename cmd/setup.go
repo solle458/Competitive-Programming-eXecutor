@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -14,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// setupCmd represents the setup command
 func setupCmd(app *app.App) *cobra.Command {
 	var lang string
 	cmd := &cobra.Command{
@@ -40,7 +36,7 @@ func setupCmd(app *app.App) *cobra.Command {
 				Lang:       lang,
 				WorkingDir: wd,
 				Config:     app.Config,
-			}, app)
+			})
 			if err != nil {
 				return err
 			}

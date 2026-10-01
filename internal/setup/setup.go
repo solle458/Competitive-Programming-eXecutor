@@ -8,8 +8,3 @@ type Request struct {
 	WorkingDir string
 	Config     *config.Config
 }
-
-type Provider interface {
-	Supports(contestID string) bool
-	Setup(req Request) error
-}
