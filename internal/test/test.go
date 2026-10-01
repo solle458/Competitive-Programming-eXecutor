@@ -1,7 +1,6 @@
 package test
 
 import (
-	"Competitive-Programming-eXecutor/internal/config"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,36 +9,79 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"Competitive-Programming-eXecutor/internal/config"
+	"Competitive-Programming-eXecutor/internal/problem"
 )
 
-func Compile(problemID string, lang string, config *config.Config) (string, error) {
-	switch lang {
-	case "py":
-		mainPath := filepath.Join(problemID, "main.py")
-		if _, err := os.Stat(mainPath); err != nil {
-			return "", fmt.Errorf("main.py not found: %w", err)
-		}
-		return "", nil
-	default:
-		outPath := filepath.Join(problemID, "a.out")
-		args := []string{"-std=c++20", "-O3"}
-		for _, dir := range config.File.LibraryDirs {
-			args = append(args, "-I", dir)
-		}
-		args = append(args, "-o", outPath, filepath.Join(problemID, "main.cpp"))
-		cmd := exec.Command("g++", args...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return "", err
-		}
-		return outPath, nil
-	}
+type language struct {
+	compile func(problem.Problem, *config.Config) (string, error)
+	argv    func(problem.Problem, string) []string
 }
 
-func Run(problemID string, executableFilePath string, lang string) (map[string]time.Duration, error) {
-	testDir := filepath.Join(problemID, "test")
-	inputFiles, err := GetInputFiles(testDir)
+var languages = map[string]language{
+	"cpp": {compile: compileCpp, argv: cppArgv},
+	"py":  {compile: compilePy, argv: pyArgv},
+}
+
+func RunSamples(p problem.Problem, timeLimit int, cfg *config.Config) error {
+	lang, err := languageByName(p.Lang)
+	if err != nil {
+		return err
+	}
+	executable, err := lang.compile(p, cfg)
+	if err != nil {
+		return err
+	}
+	executionTimes, err := runCases(p, lang.argv(p, executable))
+	if err != nil {
+		return err
+	}
+	return compare(p, executionTimes, timeLimit)
+}
+
+func languageByName(name string) (language, error) {
+	lang, ok := languages[name]
+	if !ok {
+		return language{}, fmt.Errorf("unsupported language %q (supported: cpp, py)", name)
+	}
+	return lang, nil
+}
+
+func compilePy(p problem.Problem, _ *config.Config) (string, error) {
+	if _, err := os.Stat(p.Source()); err != nil {
+		return "", fmt.Errorf("main.py not found: %w", err)
+	}
+	return "", nil
+}
+
+func pyArgv(p problem.Problem, _ string) []string {
+	return []string{"python3", p.Source()}
+}
+
+func compileCpp(p problem.Problem, cfg *config.Config) (string, error) {
+	outPath := p.Binary()
+	args := []string{"-std=c++20", "-O3"}
+	for _, dir := range cfg.File.LibraryDirs {
+		args = append(args, "-I", dir)
+	}
+	args = append(args, "-o", outPath, p.Source())
+	cmd := exec.Command("g++", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return outPath, nil
+}
+
+func cppArgv(_ problem.Problem, executable string) []string {
+	return []string{executable}
+}
+
+func runCases(p problem.Problem, argv []string) (map[string]time.Duration, error) {
+	testDir := p.SampleDir()
+	inputFiles, err := inputFiles(testDir)
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +92,7 @@ func Run(problemID string, executableFilePath string, lang string) (map[string]t
 	executionTimes := make(map[string]time.Duration, len(inputFiles))
 	for _, inputFile := range inputFiles {
 		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
-
-		var cmd *exec.Cmd
-		switch lang {
-		case "py":
-			cmd = exec.Command("python3", filepath.Join(problemID, "main.py"))
-		default:
-			cmd = exec.Command(executableFilePath)
-		}
+		cmd := exec.Command(argv[0], argv[1:]...)
 
 		in, err := os.Open(inputFile)
 		if err != nil {
@@ -81,36 +116,36 @@ func Run(problemID string, executableFilePath string, lang string) (map[string]t
 	return executionTimes, nil
 }
 
-func GetInputFiles(testDir string) ([]string, error) {
+func inputFiles(testDir string) ([]string, error) {
 	files, err := os.ReadDir(testDir)
 	if err != nil {
 		return nil, err
 	}
-	var inputFiles []string
+	var inputs []string
 	for _, file := range files {
 		if file.IsDir() {
 			continue
 		}
 		if strings.HasSuffix(file.Name(), ".in") {
-			inputFiles = append(inputFiles, filepath.Join(testDir, file.Name()))
+			inputs = append(inputs, filepath.Join(testDir, file.Name()))
 		}
 	}
-	sort.Slice(inputFiles, func(i, j int) bool {
+	sort.Slice(inputs, func(i, j int) bool {
 		return naturalLess(
-			strings.TrimSuffix(filepath.Base(inputFiles[i]), ".in"),
-			strings.TrimSuffix(filepath.Base(inputFiles[j]), ".in"),
+			strings.TrimSuffix(filepath.Base(inputs[i]), ".in"),
+			strings.TrimSuffix(filepath.Base(inputs[j]), ".in"),
 		)
 	})
-	return inputFiles, nil
+	return inputs, nil
 }
 
-func Compare(problemID string, executionTimes map[string]time.Duration, timeLimit int) error {
-	testDir := filepath.Join(problemID, "test")
-	inputFiles, err := GetInputFiles(testDir)
+func compare(p problem.Problem, executionTimes map[string]time.Duration, timeLimit int) error {
+	testDir := p.SampleDir()
+	inputs, err := inputFiles(testDir)
 	if err != nil {
 		return err
 	}
-	if len(inputFiles) == 0 {
+	if len(inputs) == 0 {
 		return fmt.Errorf("no input files found in %s", testDir)
 	}
 
@@ -118,7 +153,7 @@ func Compare(problemID string, executionTimes map[string]time.Duration, timeLimi
 	slowestExecutionTime := time.Duration(0)
 	timeLimitDuration := time.Duration(timeLimit) * time.Second
 
-	for _, inputFile := range inputFiles {
+	for _, inputFile := range inputs {
 		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
 		testPath := filepath.Join(testDir, stem+".test")
 		outPath := filepath.Join(testDir, stem+".out")

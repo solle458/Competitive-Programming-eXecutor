@@ -1,9 +1,11 @@
 package cmd
 
 import (
-	"Competitive-Programming-eXecutor/internal/app"
-	"Competitive-Programming-eXecutor/internal/test"
 	"errors"
+
+	"Competitive-Programming-eXecutor/internal/app"
+	"Competitive-Programming-eXecutor/internal/problem"
+	"Competitive-Programming-eXecutor/internal/test"
 
 	"github.com/spf13/cobra"
 )
@@ -13,9 +15,6 @@ func testCmd(app *app.App) *cobra.Command {
 		lang      string
 		timeLimit int
 	)
-	var (
-		problemIDRequired = errors.New("problem id is required")
-	)
 
 	cmd := &cobra.Command{
 		Use:   "test <problem>",
@@ -23,22 +22,9 @@ func testCmd(app *app.App) *cobra.Command {
 		Long:  `Compile the solution and compare its output against sample cases under the problem directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return problemIDRequired
+				return errors.New("problem id is required")
 			}
-			problemID := args[0]
-			executableFilePath, err := test.Compile(problemID, lang, app.Config)
-			if err != nil {
-				return err
-			}
-			executionTimes, err := test.Run(problemID, executableFilePath, lang)
-			if err != nil {
-				return err
-			}
-			err = test.Compare(problemID, executionTimes, timeLimit)
-			if err != nil {
-				return err
-			}
-			return nil
+			return test.RunSamples(problem.Problem{Dir: args[0], Lang: lang}, timeLimit, app.Config)
 		},
 	}
 

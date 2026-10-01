@@ -34,15 +34,7 @@ func Run(cfg *config.Config, req Request) error {
 	}
 
 	if !req.SkipTest {
-		executableFilePath, err := test.Compile(p.Dir, p.Lang, cfg)
-		if err != nil {
-			return err
-		}
-		executionTimes, err := test.Run(p.Dir, executableFilePath, p.Lang)
-		if err != nil {
-			return err
-		}
-		if err := test.Compare(p.Dir, executionTimes, req.TimeLimit); err != nil {
+		if err := test.RunSamples(p, req.TimeLimit, cfg); err != nil {
 			return err
 		}
 	}
