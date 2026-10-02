@@ -1,21 +1,19 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"Competitive-Programming-eXecutor/internal/app"
 	"Competitive-Programming-eXecutor/internal/submit"
+	"Competitive-Programming-eXecutor/internal/test"
 	"errors"
 
 	"github.com/spf13/cobra"
 )
 
-// submitCmd represents the submit command
 func submitCmd(app *app.App) *cobra.Command {
 	var (
 		lang      string
 		timeLimit int
+		eps       float64
 		skipTest  bool
 		copy      bool
 	)
@@ -35,18 +33,24 @@ Use --copy to copy the merged source to the clipboard instead of submitting
 			if len(args) < 1 {
 				return problemIDRequired
 			}
-			return submit.Run(app.Config, submit.Request{
+			err := submit.Run(app.Config, submit.Request{
 				ProblemPath: args[0],
-				Lang:        lang,
+				Lang:        app.Config.ResolveLang(lang),
 				TimeLimit:   timeLimit,
+				Eps:         eps,
 				SkipTest:    skipTest,
 				Copy:        copy,
 			})
+			if errors.Is(err, test.ErrNotAccepted) {
+				cmd.SilenceUsage = true
+			}
+			return err
 		},
 	}
 
-	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
+	cmd.Flags().Float64Var(&eps, "eps", 0, "absolute or relative error allowed for floating-point outputs")
 	cmd.Flags().BoolVar(&skipTest, "skip-test", false, "skip sample tests before submit or copy")
 	cmd.Flags().BoolVarP(&copy, "copy", "c", false, "copy merged source to clipboard instead of submitting")
 	return cmd

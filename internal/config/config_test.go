@@ -7,6 +7,21 @@ import (
 	"testing"
 )
 
+func TestResolveLang(t *testing.T) {
+	cfg := NewConfig()
+	cfg.File.DefaultLang = "py"
+	if got := cfg.ResolveLang("cpp"); got != "cpp" {
+		t.Fatalf("ResolveLang(%q) = %q, want %q", "cpp", got, "cpp")
+	}
+	if got := cfg.ResolveLang(""); got != "py" {
+		t.Fatalf("ResolveLang(%q) = %q, want %q", "", got, "py")
+	}
+	cfg.File.DefaultLang = ""
+	if got := cfg.ResolveLang(""); got != "cpp" {
+		t.Fatalf("ResolveLang(%q) = %q, want %q", "", got, "cpp")
+	}
+}
+
 func TestUpdateWritesEmptyAtCoderSession(t *testing.T) {
 	root := t.TempDir()
 	cfg := NewConfig()

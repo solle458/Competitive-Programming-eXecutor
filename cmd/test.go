@@ -1,24 +1,20 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
-	"Competitive-Programming-eXecutor/internal/app"
-	"Competitive-Programming-eXecutor/internal/test"
 	"errors"
+
+	"Competitive-Programming-eXecutor/internal/app"
+	"Competitive-Programming-eXecutor/internal/problem"
+	"Competitive-Programming-eXecutor/internal/test"
 
 	"github.com/spf13/cobra"
 )
 
-// testCmd represents the test command
 func testCmd(app *app.App) *cobra.Command {
 	var (
 		lang      string
 		timeLimit int
-	)
-	var (
-		problemIDRequired = errors.New("problem id is required")
+		eps       float64
 	)
 
 	cmd := &cobra.Command{
@@ -27,26 +23,22 @@ func testCmd(app *app.App) *cobra.Command {
 		Long:  `Compile the solution and compare its output against sample cases under the problem directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
-				return problemIDRequired
+				return errors.New("problem id is required")
 			}
-			problemID := args[0]
-			executableFilePath, err := test.Compile(problemID, lang, app.Config)
+			p, err := problem.Open(args[0], app.Config.ResolveLang(lang))
 			if err != nil {
 				return err
 			}
-			executionTimes, err := test.Run(problemID, executableFilePath, lang)
-			if err != nil {
-				return err
+			err = test.RunSamples(p, test.Options{TimeLimit: timeLimit, Eps: eps}, app.Config)
+			if errors.Is(err, test.ErrNotAccepted) {
+				cmd.SilenceUsage = true
 			}
-			err = test.Compare(problemID, executionTimes, timeLimit)
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		},
 	}
 
-	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
+	cmd.Flags().Float64Var(&eps, "eps", 0, "absolute or relative error allowed for floating-point outputs")
 	return cmd
 }

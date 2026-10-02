@@ -38,7 +38,7 @@ file:
 |------|------|
 | `root_dir` | ワークスペースルート |
 | `library_dirs` | `merge` で検索するライブラリディレクトリ |
-| `default_lang` | `merge` の `--lang` 未指定時のデフォルト |
+| `default_lang` | `test` / `setup` / `merge` / `submit` の `--lang` 未指定時のデフォルト。空なら `cpp` |
 | `atcoder_session` | AtCoder の `REVEL_SESSION` cookie 値 |
 
 `atcoder_session` は `ATCODER_SESSION` 環境変数でも指定可能（環境変数が優先）。
@@ -117,7 +117,7 @@ file:
 | | |
 |---|---|
 | 引数 | `<contest-id>`（例: `abc464`） |
-| フラグ | `-l, --lang` 言語（default: `cpp`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 
 **動作:**
 
@@ -132,6 +132,8 @@ file:
 
 - 開催中コンテストのサンプル取得には `atcoder_session` が必要な場合がある
 - サンプルが見つからない問題はスキップして続行
+- 期待する出力が空でもサンプルは保存する。空の側のファイルは改行 1 つ
+- 入力か出力の片方だけしかないサンプルは不完全としてその問題の setup を失敗させる
 
 ---
 
@@ -142,16 +144,26 @@ file:
 | | |
 |---|---|
 | 引数 | `<problem-path>`（例: `a`, `abc464/a`） |
-| フラグ | `-l, --lang` 言語（default: `cpp`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 | | `-t, --time-limit` 制限時間秒（default: `2`） |
+| | `--eps` 浮動小数の許容誤差（default: `0`）。`0` は空白を除いた完全一致。正の値はトークンごとに絶対誤差または相対誤差で比較し、空白の並びは見ない |
 
 **動作:**
 
 1. コンパイル（C++: `g++ -std=c++20 -O3`, Python: 存在確認のみ）
-2. 各 `test/*.in` を stdin に渡して実行し `test/*.test` に出力を保存
-3. `test/*.test` と `test/*.out` を比較（AC / WA / TLE を表示）
+2. 各 `test/*.in` を stdin に渡して実行する。`-t` 秒でプロセスを打ち切る。標準出力は `test/*.test` に保存する（打ち切りや RE でも書く）
+3. ケースごとに判定し、全部終わってから全体の最悪判定を出す
 
-**終了コード:** 全ケース AC なら 0、WA / TLE なら 1
+| 判定 | 意味 |
+|------|------|
+| AC | 出力が一致し、制限時間内に終了した |
+| TLE | 制限時間で打ち切った。または出力は一致したが、終了までの時間が制限を超えた |
+| WA | 打ち切られずに終了し、出力が不一致（制限を超えて終わっても WA） |
+| RE | 打ち切り以外の非 0 終了。`[INFO] Stderr:` に標準エラーの末尾 1 KiB を出す |
+
+全体の判定は RE、WA、TLE、AC の順で悪い方。1 ケースが RE や TLE でも残りのケースは実行する。
+
+**終了コード:** 全ケース AC なら 0、それ以外は 1（`Error: samples did not pass: WA`。WA の位置に最悪の判定名が入る）
 
 ---
 
@@ -162,7 +174,7 @@ file:
 | | |
 |---|---|
 | 引数 | `<problem-path>` |
-| フラグ | `-l, --lang` 言語（default: 空 → `config.default_lang`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 
 **動作:**
 
@@ -184,15 +196,16 @@ file:
 | | |
 |---|---|
 | 引数 | `<problem-path>` |
-| フラグ | `-l, --lang` 言語（default: `cpp`） |
+| フラグ | `-l, --lang` 言語（default: config の `default_lang`、なければ `cpp`） |
 | | `-t, --time-limit` テスト制限時間秒（default: `2`） |
+| | `--eps` サンプル比較の許容誤差（default: `0`）。意味は `cpx test` と同じ |
 | | `--skip-test` テストをスキップして merge + submit のみ |
 | | `-c, --copy` 提出せずマージ結果をクリップボードへコピー（過去問向け） |
 
 **動作:**
 
 1. 問題ディレクトリの存在確認
-2. `cpx test` 相当（`--skip-test` でスキップ可）
+2. `cpx test` 相当（`--skip-test` でスキップ可）。AC 以外は `Error: samples did not pass: WA (use --skip-test to submit anyway)` で終了し、merge / copy / submit しない
 3. `cpx merge` 相当で `submission.{lang}` 生成
 4. `--copy` の場合はクリップボードへコピーして終了
 5. それ以外は `atcoder_session` を [online-judge-tools](https://github.com/online-judge-tools/oj) の cookie.jar に同期し、**MiB 対応パッチ付き**で `oj submit` 相当を実行

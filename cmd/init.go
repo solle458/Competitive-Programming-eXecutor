@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -14,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// initCmd represents the init command
 func initCmd(app *app.App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",

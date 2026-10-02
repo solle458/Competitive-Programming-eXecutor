@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"Competitive-Programming-eXecutor/internal/problem"
+
 	"github.com/gammazero/deque"
 )
 
@@ -20,6 +22,28 @@ var (
 	ErrLibrariesMarkerMissing = errors.New("libraries marker not found in main source")
 	ErrCodeMarkerMissing      = errors.New("library code marker not found")
 )
+
+func WriteSubmission(p problem.Problem, libraryDirs []string) (string, error) {
+	sourcePath := p.Source()
+	content, err := os.ReadFile(sourcePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("source code not found: %q", sourcePath)
+		}
+		return "", fmt.Errorf("read source code %q: %w", sourcePath, err)
+	}
+
+	submissionCode, err := Generate(string(content), libraryDirs)
+	if err != nil {
+		return "", err
+	}
+
+	submissionPath := p.Submission()
+	if err := os.WriteFile(submissionPath, []byte(submissionCode), 0o644); err != nil {
+		return "", fmt.Errorf("write submission file %q: %w", submissionPath, err)
+	}
+	return submissionPath, nil
+}
 
 func Generate(sourceCode string, libraryDirs []string) (string, error) {
 	lines := strings.Split(sourceCode, "\n")

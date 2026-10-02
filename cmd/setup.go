@@ -1,6 +1,3 @@
-/*
-Copyright © 2026 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -14,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// setupCmd represents the setup command
 func setupCmd(app *app.App) *cobra.Command {
 	var lang string
 	cmd := &cobra.Command{
@@ -37,10 +33,10 @@ func setupCmd(app *app.App) *cobra.Command {
 			}
 			err = atcoder.Setup(setup.Request{
 				ContestID:  contestID,
-				Lang:       lang,
+				Lang:       app.Config.ResolveLang(lang),
 				WorkingDir: wd,
 				Config:     app.Config,
-			}, app)
+			})
 			if err != nil {
 				return err
 			}
@@ -48,6 +44,6 @@ func setupCmd(app *app.App) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVarP(&lang, "lang", "l", app.Config.File.DefaultLang, "language of the source code")
+	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
 	return cmd
 }

@@ -21,6 +21,16 @@ type Config struct {
 	File File
 }
 
+func (c *Config) ResolveLang(flag string) string {
+	if flag != "" {
+		return flag
+	}
+	if c.File.DefaultLang != "" {
+		return c.File.DefaultLang
+	}
+	return "cpp"
+}
+
 func NewConfig() *Config {
 	return &Config{
 		File: File{
