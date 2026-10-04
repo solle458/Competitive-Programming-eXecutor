@@ -227,6 +227,14 @@ file:
 
 ---
 
+## 成功後の同期
+
+成功した `cpx` コマンドのあと、`.cpx/config.yaml` がある git リポジトリを `origin/main` へ送る。送り方は jj である。`.jj/` が無いリポジトリでは `jj git init --colocate` から始める。
+
+開催中コンテストの問題ディレクトリが送る差分に含まれるとき、push は行わない。理由は標準出力に出る。コマンドが失敗したときも push は行わない。過去問の `cpx test` は、差分に開催中コンテストの問題ディレクトリが無いとき `origin/main` へ送る。
+
+同期には `git config` の `user.name` と `user.email` が必要である。
+
 ## Typical Workflow
 
 ```
