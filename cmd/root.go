@@ -6,6 +6,7 @@ import (
 
 	"Competitive-Programming-eXecutor/internal/app"
 	"Competitive-Programming-eXecutor/internal/config"
+	"Competitive-Programming-eXecutor/internal/workspacesync"
 
 	"github.com/spf13/cobra"
 )
@@ -28,6 +29,27 @@ merge libraries, and submit (or copy) solutions.`,
 				return fmt.Errorf("not initialized: run `cpx init` first")
 			}
 			app.Config = cfg
+			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Parent() == nil {
+				return nil
+			}
+			root := ""
+			if app.Config != nil {
+				root = app.Config.File.RootDir
+			}
+			if root == "" {
+				wd, err := os.Getwd()
+				if err != nil {
+					return err
+				}
+				root = wd
+			}
+			if err := workspacesync.Sync(root); err != nil {
+				cmd.SilenceUsage = true
+				return err
+			}
 			return nil
 		},
 	}
