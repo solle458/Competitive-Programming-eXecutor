@@ -122,15 +122,16 @@ file:
 **動作:**
 
 - AtCoder コンテストの存在確認（`Supports`）
-- 問題一覧取得（kenkoooo API → 失敗時は AtCoder tasks ページ）
+- 問題一覧取得（kenkoooo API → 失敗時、または問題番号が重複するときは AtCoder tasks ページ）
 - 各問題に対して並列で:
-  - `{cwd}/{contest-id}/{index}/` を作成
+  - `{cwd}/{contest-id}/{index}/` を作成。`index` はこのコンテストの問題番号（A, B, C, ...）
   - `main.{lang}` がなければテンプレートを配置
   - `test/` がなければサンプル入出力をスクレイピングして `sample-N.in/out` を保存
 
 **注意:**
 
 - 開催中コンテストのサンプル取得には `atcoder_session` が必要な場合がある
+- デイリーコンテストの問題 ID は元コンテストの ID（例: `abc387_a`）である。ディレクトリ名にはその末尾を使わず、tasks ページに出ている A, B, C を使う。サンプル URL は `{contest-id}/tasks/{problem-id}`
 - サンプルが見つからない問題はスキップして続行
 - 期待する出力が空でもサンプルは保存する。空の側のファイルは改行 1 つ
 - 入力か出力の片方だけしかないサンプルは不完全としてその問題の setup を失敗させる
