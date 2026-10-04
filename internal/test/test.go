@@ -253,6 +253,17 @@ func outputsMatch(expected, actual string, eps float64) bool {
 	return true
 }
 
+func printLabeled(label, body string) {
+	fmt.Printf("[INFO] %s:\n", label)
+	if body == "" {
+		return
+	}
+	fmt.Print(body)
+	if !strings.HasSuffix(body, "\n") {
+		fmt.Println()
+	}
+}
+
 func stderrTail(s string) string {
 	const max = 1024
 	if len(s) <= max {
@@ -272,10 +283,10 @@ func printResults(results []CaseResult) Verdict {
 		fmt.Println("========================================")
 		fmt.Printf("[INFO] %s: %s\n", r.Name, r.Verdict)
 		fmt.Printf("[INFO] Execution time: %s\n", r.Duration)
-		fmt.Printf("[INFO] Expected: %s\n", r.Expected)
-		fmt.Printf("[INFO] Actual: %s\n", r.Actual)
-		if r.Verdict == RE {
-			fmt.Printf("[INFO] Stderr: %s\n", stderrTail(r.Stderr))
+		printLabeled("Expected", r.Expected)
+		printLabeled("Actual", r.Actual)
+		if r.Stderr != "" {
+			printLabeled("Stderr", stderrTail(r.Stderr))
 		}
 		fmt.Println("========================================")
 	}
