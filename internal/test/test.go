@@ -54,7 +54,7 @@ type CaseResult struct {
 var ErrNotAccepted = errors.New("samples did not pass")
 
 type Options struct {
-	TimeLimit int
+	TimeLimit float64
 	Eps       float64
 }
 
@@ -136,7 +136,10 @@ func runCases(p problem.Problem, argv []string, opts Options) ([]CaseResult, err
 		return nil, fmt.Errorf("no input files found in %s", testDir)
 	}
 
-	limit := time.Duration(opts.TimeLimit) * time.Second
+	limit, err := timeLimitDuration(opts.TimeLimit)
+	if err != nil {
+		return nil, err
+	}
 	runs := make([]sampleRun, 0, len(inputs))
 	for _, inputFile := range inputs {
 		stem := strings.TrimSuffix(filepath.Base(inputFile), ".in")
@@ -251,6 +254,17 @@ func outputsMatch(expected, actual string, eps float64) bool {
 		return false
 	}
 	return true
+}
+
+func timeLimitDuration(seconds float64) (time.Duration, error) {
+	if seconds <= 0 || math.IsNaN(seconds) || math.IsInf(seconds, 0) {
+		return 0, fmt.Errorf("time limit must be a positive number of seconds")
+	}
+	d := time.Duration(seconds * float64(time.Second))
+	if d <= 0 {
+		return 0, fmt.Errorf("time limit must be a positive number of seconds")
+	}
+	return d, nil
 }
 
 func stderrTail(s string) string {

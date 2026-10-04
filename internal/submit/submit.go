@@ -17,7 +17,7 @@ import (
 type Request struct {
 	ProblemPath string
 	Lang        string
-	TimeLimit   int
+	TimeLimit   float64
 	Eps         float64
 	SkipTest    bool
 	Copy        bool

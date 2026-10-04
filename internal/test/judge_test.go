@@ -1,6 +1,7 @@
 package test
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -63,6 +64,24 @@ func TestJudgeEps(t *testing.T) {
 				t.Fatalf("judge(%q, %q, eps %g) = %s, want %s", tc.expected, tc.actual, tc.eps, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestTimeLimitDuration(t *testing.T) {
+	d, err := timeLimitDuration(1.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d != 1500*time.Millisecond {
+		t.Fatalf("duration %s, want 1.5s", d)
+	}
+	if _, err := timeLimitDuration(2); err != nil {
+		t.Fatal(err)
+	}
+	for _, seconds := range []float64{0, -1, math.NaN(), math.Inf(1)} {
+		if _, err := timeLimitDuration(seconds); err == nil {
+			t.Fatalf("seconds %v accepted", seconds)
+		}
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 func submitCmd(app *app.App) *cobra.Command {
 	var (
 		lang      string
-		timeLimit int
+		timeLimit float64
 		eps       float64
 		skipTest  bool
 		copy      bool
@@ -33,6 +33,9 @@ Use --copy to copy the merged source to the clipboard instead of submitting
 			if len(args) < 1 {
 				return problemIDRequired
 			}
+			if timeLimit <= 0 {
+				return errors.New("time limit must be a positive number of seconds")
+			}
 			err := submit.Run(app.Config, submit.Request{
 				ProblemPath: args[0],
 				Lang:        app.Config.ResolveLang(lang),
@@ -49,7 +52,7 @@ Use --copy to copy the merged source to the clipboard instead of submitting
 	}
 
 	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
-	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
+	cmd.Flags().Float64VarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests (fractions such as 1.5 are allowed)")
 	cmd.Flags().Float64Var(&eps, "eps", 0, "absolute or relative error allowed for floating-point outputs")
 	cmd.Flags().BoolVar(&skipTest, "skip-test", false, "skip sample tests before submit or copy")
 	cmd.Flags().BoolVarP(&copy, "copy", "c", false, "copy merged source to clipboard instead of submitting")
