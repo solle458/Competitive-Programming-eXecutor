@@ -335,6 +335,25 @@ func TestE2ETestRuntimeErrorContinues(t *testing.T) {
 	assertFile(t, filepath.Join(dir, "a", "test", "sample-2.test"), "42\n")
 }
 
+func TestE2ETestShowsStderrOnAC(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "import sys\nprint(42)\nsys.stderr.write(\"dbg\\nline\\n\")\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "42\n")
+
+	stdout, stderr, code := runAt(t, dir, "test", "a", "-l", "py")
+	if code != 0 || stderr != "" {
+		t.Fatalf("exit %d, want 0\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if normalizeDurations(stdout) != sampleACStderr {
+		t.Fatalf("stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleACStderr)
+	}
+	assertFile(t, filepath.Join(dir, "a", "test", "sample-1.test"), "42\n")
+}
+
 func TestE2ETestEps(t *testing.T) {
 	if _, err := exec.LookPath("python3"); err != nil {
 		t.Skip("python3 not installed")
@@ -613,10 +632,27 @@ Flags:
 const sampleAC = `========================================
 [INFO] sample-1: AC
 [INFO] Execution time: <duration>
-[INFO] Expected: 42
+[INFO] Expected:
+42
+[INFO] Actual:
+42
+========================================
+========================================
+[INFO] slowest execution time: <duration>
+[STATUS] AC
+========================================
+`
 
-[INFO] Actual: 42
-
+const sampleACStderr = `========================================
+[INFO] sample-1: AC
+[INFO] Execution time: <duration>
+[INFO] Expected:
+42
+[INFO] Actual:
+42
+[INFO] Stderr:
+dbg
+line
 ========================================
 ========================================
 [INFO] slowest execution time: <duration>
@@ -627,10 +663,10 @@ const sampleAC = `========================================
 const sampleEpsAC = `========================================
 [INFO] sample-1: AC
 [INFO] Execution time: <duration>
-[INFO] Expected: 0.3333333
-
-[INFO] Actual: 0.3333334
-
+[INFO] Expected:
+0.3333333
+[INFO] Actual:
+0.3333334
 ========================================
 ========================================
 [INFO] slowest execution time: <duration>
@@ -641,10 +677,10 @@ const sampleEpsAC = `========================================
 const sampleEpsWA = `========================================
 [INFO] sample-1: WA
 [INFO] Execution time: <duration>
-[INFO] Expected: 0.3333333
-
-[INFO] Actual: 0.3333334
-
+[INFO] Expected:
+0.3333333
+[INFO] Actual:
+0.3333334
 ========================================
 ========================================
 [INFO] slowest execution time: <duration>
@@ -655,9 +691,9 @@ const sampleEpsWA = `========================================
 const sampleTLE = `========================================
 [INFO] sample-1: TLE
 [INFO] Execution time: <duration>
-[INFO] Expected: 42
-
-[INFO] Actual: 
+[INFO] Expected:
+42
+[INFO] Actual:
 ========================================
 ========================================
 [INFO] slowest execution time: <duration>
@@ -668,18 +704,19 @@ const sampleTLE = `========================================
 const sampleRE = `========================================
 [INFO] sample-1: RE
 [INFO] Execution time: <duration>
-[INFO] Expected: 0
-
-[INFO] Actual: 
-[INFO] Stderr: boom
+[INFO] Expected:
+0
+[INFO] Actual:
+[INFO] Stderr:
+boom
 ========================================
 ========================================
 [INFO] sample-2: WA
 [INFO] Execution time: <duration>
-[INFO] Expected: 7
-
-[INFO] Actual: 42
-
+[INFO] Expected:
+7
+[INFO] Actual:
+42
 ========================================
 ========================================
 [INFO] slowest execution time: <duration>
@@ -690,10 +727,10 @@ const sampleRE = `========================================
 const sampleWA = `========================================
 [INFO] sample-1: WA
 [INFO] Execution time: <duration>
-[INFO] Expected: 42
-
-[INFO] Actual: 0
-
+[INFO] Expected:
+42
+[INFO] Actual:
+0
 ========================================
 ========================================
 [INFO] slowest execution time: <duration>
