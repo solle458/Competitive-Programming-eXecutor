@@ -288,6 +288,55 @@ func TestE2ETestHonorsDefaultLang(t *testing.T) {
 	}
 }
 
+func TestE2ETestFractionalTimeLimit(t *testing.T) {
+	if _, err := exec.LookPath("python3"); err != nil {
+		t.Skip("python3 not installed")
+	}
+	dir := workspace(t)
+	writeFile(t, filepath.Join(dir, "a", "main.py"), "print(42)\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "a", "test", "sample-1.out"), "42\n")
+
+	stdout, stderr, code := runAt(t, dir, "test", "a", "-l", "py", "-t", "1.5")
+	if code != 0 || stderr != "" {
+		t.Fatalf("1.5 exit %d, want 0\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if normalizeDurations(stdout) != sampleAC {
+		t.Fatalf("1.5 stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleAC)
+	}
+
+	writeFile(t, filepath.Join(dir, "slow", "main.py"), "while True:\n    pass\n")
+	writeFile(t, filepath.Join(dir, "slow", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "slow", "test", "sample-1.out"), "42\n")
+	stdout, stderr, code = runAtDeadline(t, 5*time.Second, dir, "test", "slow", "-l", "py", "-t", "0.4")
+	if code != 1 {
+		t.Fatalf("0.4 exit %d, want 1\nstdout %q\nstderr %q", code, stdout, stderr)
+	}
+	if stderr != "Error: samples did not pass: TLE\n" {
+		t.Fatalf("0.4 stderr\n got %q", stderr)
+	}
+	if normalizeDurations(stdout) != sampleTLE {
+		t.Fatalf("0.4 stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleTLE)
+	}
+}
+
+func TestE2ETestRejectsNonPositiveTimeLimit(t *testing.T) {
+	dir := workspace(t)
+	for _, args := range [][]string{
+		{"test", "nope", "-t", "0"},
+		{"test", "nope", "-t", "-1"},
+		{"submit", "nope", "-t", "0"},
+	} {
+		stdout, stderr, code := runAt(t, dir, args...)
+		if code != 1 || stdout != "" {
+			t.Fatalf("%v code=%d stdout=%q stderr=%q", args, code, stdout, stderr)
+		}
+		if !strings.Contains(stderr, "Error: time limit must be a positive number of seconds\n") {
+			t.Fatalf("%v stderr\n got %q", args, stderr)
+		}
+	}
+}
+
 func TestE2ETestKillsAtTimeLimit(t *testing.T) {
 	if _, err := exec.LookPath("python3"); err != nil {
 		t.Skip("python3 not installed")
@@ -609,10 +658,10 @@ const testUsage = `Usage:
   cpx test <problem> [flags]
 
 Flags:
-      --eps float        absolute or relative error allowed for floating-point outputs
-  -h, --help             help for test
-  -l, --lang string      language of the source code (default: default_lang in config, else cpp)
-  -t, --time-limit int   time limit in seconds for sample tests (default 2)
+      --eps float          absolute or relative error allowed for floating-point outputs
+  -h, --help               help for test
+  -l, --lang string        language of the source code (default: default_lang in config, else cpp)
+  -t, --time-limit float   time limit in seconds for sample tests (fractions such as 1.5 are allowed) (default 2)
 
 `
 
@@ -620,12 +669,12 @@ const submitUsage = `Usage:
   cpx submit <problem> [flags]
 
 Flags:
-  -c, --copy             copy merged source to clipboard instead of submitting
-      --eps float        absolute or relative error allowed for floating-point outputs
-  -h, --help             help for submit
-  -l, --lang string      language of the source code (default: default_lang in config, else cpp)
-      --skip-test        skip sample tests before submit or copy
-  -t, --time-limit int   time limit in seconds for sample tests (default 2)
+  -c, --copy               copy merged source to clipboard instead of submitting
+      --eps float          absolute or relative error allowed for floating-point outputs
+  -h, --help               help for submit
+  -l, --lang string        language of the source code (default: default_lang in config, else cpp)
+      --skip-test          skip sample tests before submit or copy
+  -t, --time-limit float   time limit in seconds for sample tests (fractions such as 1.5 are allowed) (default 2)
 
 `
 

@@ -13,7 +13,7 @@ import (
 func testCmd(app *app.App) *cobra.Command {
 	var (
 		lang      string
-		timeLimit int
+		timeLimit float64
 		eps       float64
 	)
 
@@ -24,6 +24,9 @@ func testCmd(app *app.App) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("problem id is required")
+			}
+			if timeLimit <= 0 {
+				return errors.New("time limit must be a positive number of seconds")
 			}
 			p, err := problem.Open(args[0], app.Config.ResolveLang(lang))
 			if err != nil {
@@ -38,7 +41,7 @@ func testCmd(app *app.App) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&lang, "lang", "l", "", "language of the source code (default: default_lang in config, else cpp)")
-	cmd.Flags().IntVarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests")
+	cmd.Flags().Float64VarP(&timeLimit, "time-limit", "t", 2, "time limit in seconds for sample tests (fractions such as 1.5 are allowed)")
 	cmd.Flags().Float64Var(&eps, "eps", 0, "absolute or relative error allowed for floating-point outputs")
 	return cmd
 }
