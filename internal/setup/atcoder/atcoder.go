@@ -255,10 +255,22 @@ func downloadSamplesFromURL(problemDir, url, session string) error {
 func GetProblems(contestID, session string) ([]Problem, error) {
 	contestID = strings.ToLower(contestID)
 	problems, err := getProblemsFromKenkoooo(contestID)
-	if err == nil && len(problems) > 0 {
+	if err == nil && len(problems) > 0 && !problemIndexesCollide(problems) {
 		return problems, nil
 	}
 	return getProblemsFromTasksPage(contestID, session)
+}
+
+func problemIndexesCollide(problems []Problem) bool {
+	seen := make(map[string]struct{}, len(problems))
+	for _, problem := range problems {
+		key := strings.ToLower(problem.ProblemIndex)
+		if _, ok := seen[key]; ok {
+			return true
+		}
+		seen[key] = struct{}{}
+	}
+	return false
 }
 
 func getProblemsFromKenkoooo(contestID string) ([]Problem, error) {
@@ -313,10 +325,23 @@ func getProblemsFromTasksPage(contestID, session string) ([]Problem, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseTasksPage(string(body), contestID)
+}
 
+// taskCellLink matches the first cell of a tasks-table row. The anchor text is
+// the index shown for this contest (A, B, C, ...). The href may point at a
+// problem id from an older contest, as AtCoder Daily Training does.
+var taskCellLink = regexp.MustCompile(`(?s)<td[^>]*>\s*<a href="([^"]+)">\s*([^<]*?)\s*</a>`)
+
+func parseTasksPage(body, contestID string) ([]Problem, error) {
 	seen := make(map[string]struct{})
 	var problems []Problem
-	for _, match := range taskLinkPattern.FindAllStringSubmatch(string(body), -1) {
+	for _, row := range strings.Split(body, "<tr") {
+		cell := taskCellLink.FindStringSubmatch(row)
+		if cell == nil {
+			continue
+		}
+		match := taskLinkPattern.FindStringSubmatch(cell[1])
 		if len(match) < 3 || match[1] != contestID {
 			continue
 		}
@@ -325,10 +350,14 @@ func getProblemsFromTasksPage(contestID, session string) ([]Problem, error) {
 			continue
 		}
 		seen[problemID] = struct{}{}
+		index := strings.ToUpper(strings.TrimSpace(cell[2]))
+		if index == "" {
+			index = problemIndexFromID(problemID)
+		}
 		problems = append(problems, Problem{
 			ContestID:    contestID,
 			ProblemID:    problemID,
-			ProblemIndex: problemIndexFromID(problemID),
+			ProblemIndex: index,
 		})
 	}
 	if len(problems) == 0 {
