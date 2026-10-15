@@ -476,6 +476,24 @@ func TestE2ETestCpp(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, "bad", "test", "sample-1.test")); !os.IsNotExist(err) {
 		t.Fatalf("sample output should not exist, stat err=%v", err)
 	}
+
+	header := "#pragma once\n#include <iostream>\nusing namespace missing_ns;\nusing Value = int;\n/* -- library code --*/\nValue answer() { return 42; }\n"
+	writeFile(t, filepath.Join(dir, "library", "util.hpp"), header)
+	shapedMain := "#include \"util.hpp\"\n/* -- libraries --*/\nint main() {\n  std::cout << answer() << std::endl;\n}\n"
+	writeFile(t, filepath.Join(dir, "shaped", "main.cpp"), shapedMain)
+	writeFile(t, filepath.Join(dir, "shaped", "test", "sample-1.in"), "\n")
+	writeFile(t, filepath.Join(dir, "shaped", "test", "sample-1.out"), "42\n")
+	stdout, stderr, code = runAt(t, dir, "test", "shaped")
+	if code != 0 || stderr != "" {
+		t.Fatalf("shaped code=%d stderr=%q stdout=%q", code, stderr, stdout)
+	}
+	if normalizeDurations(stdout) != sampleAC {
+		t.Fatalf("shaped stdout\n got %q\nwant %q", normalizeDurations(stdout), sampleAC)
+	}
+	assertFile(t, filepath.Join(dir, "shaped", "main.cpp"), shapedMain)
+	if _, err := os.Stat(filepath.Join(dir, "shaped", "submission.cpp")); !os.IsNotExist(err) {
+		t.Fatalf("submission.cpp should not exist, stat err=%v", err)
+	}
 }
 
 func TestE2ESubmitStopsOnWA(t *testing.T) {

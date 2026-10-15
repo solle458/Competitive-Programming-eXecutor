@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"Competitive-Programming-eXecutor/internal/config"
+	"Competitive-Programming-eXecutor/internal/merge"
 	"Competitive-Programming-eXecutor/internal/problem"
 )
 
@@ -58,13 +59,16 @@ type Options struct {
 	Eps       float64
 }
 
-var languages = map[string]func(problem.Problem, *config.Config) ([]string, error){
+var languages = map[string]func(problem.Problem, *config.Config) ([]string, func(), error){
 	"cpp": buildCpp,
 	"py":  buildPy,
 }
 
 func RunSamples(p problem.Problem, opts Options, cfg *config.Config) error {
-	argv, err := build(p, cfg)
+	argv, cleanup, err := build(p, cfg)
+	if cleanup != nil {
+		defer cleanup()
+	}
 	if err != nil {
 		return err
 	}
@@ -79,35 +83,77 @@ func RunSamples(p problem.Problem, opts Options, cfg *config.Config) error {
 	return nil
 }
 
-func build(p problem.Problem, cfg *config.Config) ([]string, error) {
+func build(p problem.Problem, cfg *config.Config) ([]string, func(), error) {
 	fn, ok := languages[p.Lang]
 	if !ok {
-		return nil, fmt.Errorf("unsupported language %q (supported: cpp, py)", p.Lang)
+		return nil, nil, fmt.Errorf("unsupported language %q (supported: cpp, py)", p.Lang)
 	}
 	return fn(p, cfg)
 }
 
-func buildPy(p problem.Problem, _ *config.Config) ([]string, error) {
+func buildPy(p problem.Problem, cfg *config.Config) ([]string, func(), error) {
 	if _, err := os.Stat(p.Source()); err != nil {
-		return nil, fmt.Errorf("main.py not found: %w", err)
+		return nil, nil, fmt.Errorf("main.py not found: %w", err)
 	}
-	return []string{"python3", p.Source()}, nil
+	path, cleanup, err := writeShapedSource(p, cfg, "cpx-*.py")
+	if err != nil {
+		return nil, cleanup, err
+	}
+	return []string{"python3", path}, cleanup, nil
 }
 
-func buildCpp(p problem.Problem, cfg *config.Config) ([]string, error) {
+func buildCpp(p problem.Problem, cfg *config.Config) ([]string, func(), error) {
+	path, cleanup, err := writeShapedSource(p, cfg, "cpx-*.cpp")
+	if err != nil {
+		return nil, cleanup, err
+	}
 	outPath := p.Binary()
 	args := []string{"-std=c++20", "-O3"}
 	for _, dir := range cfg.File.LibraryDirs {
 		args = append(args, "-I", dir)
 	}
-	args = append(args, "-o", outPath, p.Source())
+	args = append(args, "-o", outPath, path)
 	cmd := exec.Command("g++", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
-		return nil, err
+		return nil, cleanup, err
 	}
-	return []string{outPath}, nil
+	return []string{outPath}, cleanup, nil
+}
+
+func writeShapedSource(p problem.Problem, cfg *config.Config, pattern string) (string, func(), error) {
+	text, err := submissionText(p, cfg)
+	if err != nil {
+		return "", nil, err
+	}
+	f, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return "", nil, err
+	}
+	path := f.Name()
+	cleanup := func() { _ = os.Remove(path) }
+	if _, err := f.WriteString(text); err != nil {
+		f.Close()
+		cleanup()
+		return "", nil, err
+	}
+	if err := f.Close(); err != nil {
+		cleanup()
+		return "", nil, err
+	}
+	return path, cleanup, nil
+}
+
+func submissionText(p problem.Problem, cfg *config.Config) (string, error) {
+	content, err := os.ReadFile(p.Source())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("source code not found: %q", p.Source())
+		}
+		return "", fmt.Errorf("read source code %q: %w", p.Source(), err)
+	}
+	return merge.Generate(string(content), cfg.File.LibraryDirs)
 }
 
 type runFinish int
