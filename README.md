@@ -181,13 +181,15 @@ file:
 **動作:**
 
 - `{problem-path}/main.{lang}` を読み込み
-- `/* -- libraries --*/` マーカー以降の `#include "..."` から `.hpp` ライブラリを BFS 展開
+- `#include` を集め、`.hpp` を展開する
+- ライブラリ本体を `/* -- libraries --*/` の直後に書く
 - `{problem-path}/submission.{lang}` を生成
+
+規則の詳細は [docs/ライブラリ展開.md](docs/ライブラリ展開.md)。
 
 **要件:**
 
-- `main.{lang}` に `/* -- libraries --*/` マーカーが必要
-- 各 `.hpp` に `/* -- library code --*/` マーカーが必要
+- `main.{lang}` に `/* -- libraries --*/` が必要
 
 ---
 
