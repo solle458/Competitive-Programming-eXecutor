@@ -98,3 +98,81 @@ int x;
 		t.Fatalf("error should mention marker: %v", err)
 	}
 }
+
+func TestGenerateDropsHeaderBoilerplate(t *testing.T) {
+	dir := t.TempDir()
+	libraryDir := filepath.Join(dir, "library")
+	if err := os.MkdirAll(libraryDir, 0o755); err != nil {
+		t.Fatalf("mkdir library: %v", err)
+	}
+	header := "" +
+		"#pragma once\n" +
+		"\n" +
+		"#include <vector>\n" +
+		"  #include <map>\n" +
+		"\n" +
+		"using namespace std;\n" +
+		"\tusing namespace std::chrono;\n" +
+		"using Value = long long;\n" +
+		"using Base::name;\n" +
+		"// note\n" +
+		"/* -- library code --*/\n" +
+		"class BIT {};\n"
+	if err := os.WriteFile(filepath.Join(libraryDir, "bit.hpp"), []byte(header), 0o644); err != nil {
+		t.Fatalf("write bit.hpp: %v", err)
+	}
+
+	source := "#include <iostream>\n#include \"bit.hpp\"\nusing namespace std;\n\n" + LibraryMarker + "\nint main() {}\n"
+	got, err := Generate(source, []string{libraryDir})
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+
+	want := "#include <iostream>\n" +
+		"#include <vector>\n" +
+		"#include <map>\n" +
+		"using namespace std;\n" +
+		"\n" +
+		LibraryMarker + "\n" +
+		"\n" +
+		"\n" +
+		"using Value = long long;\n" +
+		"using Base::name;\n" +
+		"// note\n" +
+		"class BIT {};\n" +
+		"int main() {}\n\n"
+	if got != want {
+		t.Fatalf("Generate()\n got %q\nwant %q", got, want)
+	}
+}
+
+func TestGenerateExpandsDependenciesBeforeIncluder(t *testing.T) {
+	dir := t.TempDir()
+	libraryDir := filepath.Join(dir, "library")
+	if err := os.MkdirAll(libraryDir, 0o755); err != nil {
+		t.Fatalf("mkdir library: %v", err)
+	}
+	dep := "#pragma once\nclass Dep {};\n"
+	mid := "#pragma once\nclass A {};\n#include \"dep.hpp\"\n#include <set>\nclass B {};\n"
+	if err := os.WriteFile(filepath.Join(libraryDir, "dep.hpp"), []byte(dep), 0o644); err != nil {
+		t.Fatalf("write dep.hpp: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(libraryDir, "mid.hpp"), []byte(mid), 0o644); err != nil {
+		t.Fatalf("write mid.hpp: %v", err)
+	}
+
+	source := "#include \"mid.hpp\"\n" + LibraryMarker + "\nint main() {}\n"
+	got, err := Generate(source, []string{libraryDir})
+	if err != nil {
+		t.Fatalf("Generate() error = %v", err)
+	}
+	want := "#include <set>\n" +
+		LibraryMarker + "\n" +
+		"class Dep {};\n" +
+		"class A {};\n" +
+		"class B {};\n" +
+		"int main() {}\n\n"
+	if got != want {
+		t.Fatalf("Generate()\n got %q\nwant %q", got, want)
+	}
+}
