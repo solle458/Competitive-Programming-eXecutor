@@ -20,7 +20,7 @@ func testCmd(app *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test <problem>",
 		Short: "Run sample tests for a problem",
-		Long:  `Compile the solution and compare its output against sample cases under the problem directory.`,
+		Long:  `Expand libraries the same way as merge, compile that submission, and compare its output against sample cases under the problem directory.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 1 {
 				return errors.New("problem id is required")
