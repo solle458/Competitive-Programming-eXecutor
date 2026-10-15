@@ -165,6 +165,9 @@ func TestE2EMerge(t *testing.T) {
 	if string(got) != mergedSubmission {
 		t.Fatalf("submission.cpp\n got %q\nwant %q", got, mergedSubmission)
 	}
+	assertFile(t, filepath.Join(contest, "a", "main.cpp"), mergeMain)
+	assertFile(t, filepath.Join(dir, "library", "util.hpp"), utilLibrary)
+	assertFile(t, filepath.Join(dir, "library", "widget.hpp"), widgetLibrary)
 
 	writeFile(t, filepath.Join(dir, "library", "only.hpp"), onlyLibrary)
 	writeFile(t, filepath.Join(contest, "b", "main.cpp"), "#include \"only.hpp\"\nint main() { return 0; }\n")
@@ -807,9 +810,6 @@ int main() {
 `
 
 const libraryTemplate = `#pragma once
-
-/* -- library code --*/
-
 
 `
 

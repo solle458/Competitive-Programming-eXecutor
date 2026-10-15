@@ -12,16 +12,14 @@ import (
 	"github.com/gammazero/deque"
 )
 
-// init やテンプレート生成と同じ文字列を使う（自動生成するならここが唯一の定義元）
+// LibraryMarker はコンテスト解答の挿入位置。
+// CodeMarker は公開ヘッダに残っている本体区切り。提出ではその行を落とす。
 const (
 	LibraryMarker = "/* -- libraries --*/"
 	CodeMarker    = "/* -- library code --*/"
 )
 
-var (
-	ErrLibrariesMarkerMissing = errors.New("libraries marker not found in main source")
-	ErrCodeMarkerMissing      = errors.New("library code marker not found")
-)
+var ErrLibrariesMarkerMissing = errors.New("libraries marker not found in main source")
 
 func WriteSubmission(p problem.Problem, libraryDirs []string) (string, error) {
 	sourcePath := p.Source()
@@ -79,10 +77,7 @@ func Generate(sourceCode string, libraryDirs []string) (string, error) {
 			return "", err
 		}
 
-		code, err := extractLibraryCode(include, libraryLines, extractInclude)
-		if err != nil {
-			return "", err
-		}
+		code := extractLibraryCode(libraryLines, extractInclude)
 		mergedLibraries.PushFront(code)
 	}
 
@@ -167,31 +162,34 @@ func readLibraryFile(include string, libraryDirs []string) ([]string, error) {
 	return nil, fmt.Errorf("library not found: %q (searched in %v)", include, libraryDirs)
 }
 
-func extractLibraryCode(include string, lines []string, extractInclude func(string) bool) (string, error) {
+func extractLibraryCode(lines []string, extractInclude func(string) bool) string {
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+
 	var out strings.Builder
-	inCode := false
-	foundMarker := false
-
 	for _, line := range lines {
-		if extractInclude(line) {
+		if extractInclude(line) || droppedLibraryLine(line) {
 			continue
 		}
-		if strings.HasPrefix(line, CodeMarker) {
-			if inCode {
-				return out.String(), nil
-			}
-			inCode = true
-			foundMarker = true
-			continue
-		}
-		if inCode {
-			out.WriteString(line)
-			out.WriteString("\n")
-		}
+		out.WriteString(line)
+		out.WriteString("\n")
 	}
+	return out.String()
+}
 
-	if !foundMarker {
-		return "", fmt.Errorf("%w in %q: add %q", ErrCodeMarkerMissing, include, CodeMarker)
+func droppedLibraryLine(line string) bool {
+	trimmed := strings.TrimSpace(line)
+	switch {
+	case trimmed == "#pragma once":
+		return true
+	case strings.HasPrefix(trimmed, "#include"):
+		return true
+	case strings.HasPrefix(trimmed, "using namespace"):
+		return true
+	case trimmed == CodeMarker:
+		return true
+	default:
+		return false
 	}
-	return out.String(), nil
 }

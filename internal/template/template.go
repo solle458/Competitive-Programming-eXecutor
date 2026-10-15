@@ -26,9 +26,6 @@ int main() {
 
 const LibraryTemplate = `#pragma once
 
-/* -- library code --*/
-
-
 `
 
 func CreateTemplate(rootDir string) error {
